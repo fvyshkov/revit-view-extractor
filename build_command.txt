@@ -1,0 +1,6 @@
+# Copy and paste this command into PowerShell:
+
+& "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe" RevitViewExtractor\RevitViewExtractor.csproj /p:Configuration=Release /p:Platform=AnyCPU /verbosity:normal
+
+# If the above doesn't work, try this:
+msbuild RevitViewExtractor\RevitViewExtractor.csproj /p:Configuration=Release /p:Platform=AnyCPU /verbosity:normal

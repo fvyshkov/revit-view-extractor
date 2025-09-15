@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="DBApplication">
+    <Name>View Extractor Cloud</Name>
+    <Assembly>RevitViewExtractor.dll</Assembly>
+    <AddInId>A1B2C3D4-E5F6-7890-ABCD-123456789013</AddInId>
+    <FullClassName>RevitViewExtractor.ViewExtractorCloud</FullClassName>
+    <VendorId>RVEXT</VendorId>
+    <VendorDescription>Revit View Extractor for Design Automation</VendorDescription>
+  </AddIn>
+</RevitAddIns>

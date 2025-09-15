@@ -1,0 +1,90 @@
+{
+  "document": "100.rvt",
+  "processing_time": "2025-09-15 17:51:37",
+  "total_views": 15,
+  "exportable_views": 8,
+  "view_list": [
+    {
+      "name": "Level 1",
+      "type": "FloorPlan",
+      "exportable": true
+    },
+    {
+      "name": "Level 2",
+      "type": "FloorPlan",
+      "exportable": true
+    },
+    {
+      "name": "Site",
+      "type": "FloorPlan",
+      "exportable": true
+    },
+    {
+      "name": "3D View 1",
+      "type": "ThreeD",
+      "exportable": true
+    },
+    {
+      "name": "Elevation 1 - North",
+      "type": "Elevation",
+      "exportable": true
+    },
+    {
+      "name": "Elevation 2 - East",
+      "type": "Elevation",
+      "exportable": true
+    },
+    {
+      "name": "Elevation 3 - South",
+      "type": "Elevation",
+      "exportable": true
+    },
+    {
+      "name": "Elevation 4 - West",
+      "type": "Elevation",
+      "exportable": true
+    },
+    {
+      "name": "Section 1",
+      "type": "Section",
+      "exportable": false,
+      "reason": "Template"
+    },
+    {
+      "name": "Drafting View",
+      "type": "DraftingView",
+      "exportable": false,
+      "reason": "Not printable"
+    },
+    {
+      "name": "Schedule/Quantities",
+      "type": "Schedule",
+      "exportable": false,
+      "reason": "Schedule type"
+    },
+    {
+      "name": "{3D Browser}",
+      "type": "ThreeD",
+      "exportable": false,
+      "reason": "System view"
+    },
+    {
+      "name": "Project Browser",
+      "type": "ProjectBrowser",
+      "exportable": false,
+      "reason": "Browser view"
+    },
+    {
+      "name": "System Browser",
+      "type": "SystemBrowser",
+      "exportable": false,
+      "reason": "System view"
+    },
+    {
+      "name": "Legends",
+      "type": "Legend",
+      "exportable": false,
+      "reason": "Legend type"
+    }
+  ]
+}

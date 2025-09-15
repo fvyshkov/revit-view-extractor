@@ -1,0 +1,9 @@
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitViewExtractor.csproj.AssemblyReference.cache
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitViewExtractor.GeneratedMSBuildEditorConfig.editorconfig
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitViewExtractor.csproj.CoreCompileInputs.cache
+C:\revit-2\RevitViewExtractor\bin\Release\net48\RevitViewExtractor.dll
+C:\revit-2\RevitViewExtractor\bin\Release\net48\RevitViewExtractor.pdb
+C:\revit-2\RevitViewExtractor\bin\Release\net48\DesignAutomationBridge.dll
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitVie.137DDF0B.Up2Date
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitViewExtractor.dll
+C:\revit-2\RevitViewExtractor\obj\Release\net48\RevitViewExtractor.pdb

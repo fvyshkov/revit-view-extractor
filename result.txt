@@ -1,0 +1,28 @@
+Document: 100.rvt
+Total views: 15
+Exportable views: 8
+Processing time: 2025-09-15 17:51:37
+
+First 5 exportable views:
+- Level 1 (FloorPlan)
+- Level 2 (FloorPlan)
+- Site (FloorPlan)
+- 3D View 1 (ThreeD)
+- Elevation 1 - North (Elevation)
+
+Complete view analysis:
+• Level 1 (FloorPlan) - ✅ EXPORTABLE
+• Level 2 (FloorPlan) - ✅ EXPORTABLE
+• Site (FloorPlan) - ✅ EXPORTABLE
+• 3D View 1 (ThreeD) - ✅ EXPORTABLE
+• Elevation 1 - North (Elevation) - ✅ EXPORTABLE
+• Elevation 2 - East (Elevation) - ✅ EXPORTABLE
+• Elevation 3 - South (Elevation) - ✅ EXPORTABLE
+• Elevation 4 - West (Elevation) - ✅ EXPORTABLE
+• Section 1 (Section) - ❌ Template
+• Drafting View (DraftingView) - ❌ Not printable
+• Schedule/Quantities (Schedule) - ❌ Schedule type
+• {3D Browser} (ThreeD) - ❌ System view
+• Project Browser (ProjectBrowser) - ❌ Browser view
+• System Browser (SystemBrowser) - ❌ System view
+• Legends (Legend) - ❌ Legend type

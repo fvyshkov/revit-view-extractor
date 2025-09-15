@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ApplicationPackage SchemaVersion="1.0" Version="1.0" ProductCode="{12345678-1234-1234-1234-123456789012}" Name="RevitViewExtractor" Description="Extract first view from Revit file" Author="APS User">
+  <CompanyDetails Name="APS User" />
+  <Components Description="RevitViewExtractor Components">
+    <RuntimeRequirements SeriesMin="R2024" SeriesMax="R2024" Platform="Win64" OS="Win7|Win8|Win10|Win11" />
+    <ComponentEntry AppName="RevitViewExtractor" ModuleName="./Contents/RevitViewExtractor.dll" AppDescription="Extract first view from Revit file" LoadOnCommandInvocation="False" LoadOnRevitStartup="True" />
+  </Components>
+</ApplicationPackage>

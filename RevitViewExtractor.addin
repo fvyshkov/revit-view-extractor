@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RevitAddIns>
+  <AddIn Type="Command">
+    <Name>Revit View Extractor</Name>
+    <Assembly>RevitViewExtractor\bin\Release\net48\RevitViewExtractor.dll</Assembly>
+    <AddInId>A1B2C3D4-E5F6-7890-ABCD-123456789012</AddInId>
+    <FullClassName>RevitViewExtractor.ViewExtractorApp</FullClassName>
+    <Text>Extract View</Text>
+    <Description>Extract first view from Revit model as PNG image</Description>
+    <VendorId>RVEXT</VendorId>
+    <VendorDescription>Revit View Extractor Plugin</VendorDescription>
+    <VisibilityMode>AlwaysVisible</VisibilityMode>
+  </AddIn>
+</RevitAddIns>
