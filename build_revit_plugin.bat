@@ -83,3 +83,4 @@ if %BUILD_RESULT%==0 (
 echo.
 echo Press any key to continue...
 pause >nul
+

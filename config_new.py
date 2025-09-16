@@ -1,0 +1,3 @@
+# New Autodesk App credentials
+CLIENT_ID = "2ceGWNLbW8QeWElmqiBGQAj2BLkNJuB8kNIWUCJHwKHhYUzN"
+CLIENT_SECRET = "QbHFWvsR0V49buWiqQYXTIOcwlh8Q5pgkJpa9MmqxiY1wukDkkZ2MgqNWHaOfkvD"

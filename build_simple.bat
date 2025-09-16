@@ -50,3 +50,4 @@ if %BUILD_RESULT%==0 (
 
 echo.
 pause
+

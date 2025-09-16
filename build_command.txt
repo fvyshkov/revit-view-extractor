@@ -4,3 +4,4 @@
 
 # If the above doesn't work, try this:
 msbuild RevitViewExtractor\RevitViewExtractor.csproj /p:Configuration=Release /p:Platform=AnyCPU /verbosity:normal
+

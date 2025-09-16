@@ -16,53 +16,62 @@ RevitViewExtractor is a powerful Revit plugin that enables advanced view managem
 - Generate structured view reports
 - Batch extract view information
 
-## 🔧 Usage Examples
+## 🔧 Command-Line Utilities
 
-### 1. List Views in Revit Desktop
-```csharp
-// In Revit, click "List All Views" plugin button
-// This will show a dialog with all document views
-public void ListViews(Document doc)
-{
-    List<View> allViews = GetAllViews(doc);
-    ShowViewsList(allViews);
-}
+### List Views
+```bash
+# List all views in a Revit file
+python scripts/list_views.py 100.rvt
+
+# List only Floor Plan views
+python scripts/list_views.py 100.rvt --type FloorPlan
+
+# List only exportable views in JSON format
+python scripts/list_views.py 100.rvt --exportable --json
 ```
 
-### 2. Export a Specific View
-```csharp
-// Select and export a view as PNG
-public void ExportSelectedView(Document doc, View selectedView)
-{
-    string outputPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.Desktop), 
-        "extracted_view.png"
-    );
-    ExportViewToImage(doc, selectedView, outputPath);
-}
+### Export Views
+```bash
+# Export a specific view as PNG
+python scripts/export_view.py 100.rvt "Level 1"
+
+# Export a specific view with custom output and format
+python scripts/export_view.py 100.rvt "3D View 1" --output custom_view.jpg --format jpg
 ```
 
-### 3. Cloud View Extraction
-```python
-# Python script for cloud processing
-def extract_views_from_revit_file(revit_file_path):
-    """
-    Process Revit file in Autodesk Design Automation
-    Returns structured view information
-    """
-    # Authenticate with Autodesk
-    token = get_access_token()
-    
-    # Create workitem to process file
-    workitem_id = create_workitem(
-        activity_id="RevitViewExtractor",
-        input_file=revit_file_path
-    )
-    
-    # Retrieve view information
-    view_report = get_workitem_result(workitem_id)
-    return view_report
+### Batch Processing
+```bash
+# Process all Revit files in a directory
+python scripts/batch_process.py /path/to/revit/files
+
+# Batch export only Floor Plan views as PDF
+python scripts/batch_process.py /path/to/revit/files --type FloorPlan --format pdf
+
+# Batch process with parallel workers and output directory
+python scripts/batch_process.py /path/to/revit/files --output-dir exports --workers 10
 ```
+
+### Upload and Process
+```bash
+# Upload and process a Revit file in the cloud
+python scripts/upload_and_process.py 100.rvt
+
+# Filter views by type
+python scripts/upload_and_process.py 100.rvt --type FloorPlan
+
+# Show only exportable views in JSON
+python scripts/upload_and_process.py 100.rvt --exportable --json
+```
+
+## 🔧 Technologies
+
+- **Languages**: C#, Python
+- **Platforms**: 
+  - Revit Desktop 2026
+  - Autodesk Design Automation
+- **APIs**: 
+  - Revit API
+  - Autodesk Forge Design Automation
 
 ## 📊 View Analysis Details
 
@@ -80,16 +89,6 @@ def extract_views_from_revit_file(revit_file_path):
 - Excludes template views
 - Filters out non-printable views
 - Removes system and browser views
-
-## 💻 Technologies
-
-- **Languages**: C#, Python
-- **Platforms**: 
-  - Revit Desktop 2026
-  - Autodesk Design Automation
-- **APIs**: 
-  - Revit API
-  - Autodesk Forge Design Automation
 
 ## 🚀 Quick Start
 

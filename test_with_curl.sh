@@ -1,77 +1,94 @@
 #!/bin/bash
 
-echo "🧪 Testing with curl to eliminate Python issues"
-echo "================================================"
-
-# Get token
+# Получаем токен из Python
 echo "Getting access token..."
-TOKEN_RESPONSE=$(curl -s -X POST \
-  "https://developer.api.autodesk.com/authentication/v2/token" \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "client_id=$CLIENT_ID&client_secret=$CLIENT_SECRET&grant_type=client_credentials&scope=code:all")
+TOKEN=$(python3 -c "
+from config import *
+import requests
+url = 'https://developer.api.autodesk.com/authentication/v2/token'
+data = {
+    'client_id': CLIENT_ID,
+    'client_secret': CLIENT_SECRET, 
+    'grant_type': 'client_credentials',
+    'scope': 'code:all'
+}
+response = requests.post(url, headers={'Content-Type': 'application/x-www-form-urlencoded'}, data=data)
+if response.status_code == 200:
+    print(response.json()['access_token'])
+else:
+    print('ERROR')
+")
 
-TOKEN=$(echo $TOKEN_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
-
-if [ -z "$TOKEN" ]; then
-    echo "❌ Failed to get token"
+if [ "$TOKEN" = "ERROR" ]; then
+    echo "Failed to get token"
     exit 1
 fi
 
-echo "✓ Token obtained"
+echo "Token obtained: ${TOKEN:0:20}..."
 
-# List our activities to see exact format
-echo "Listing activities..."
-ACTIVITIES=$(curl -s -X GET \
-  "https://developer.api.autodesk.com/da/us-east/v3/activities" \
-  -H "Authorization: Bearer $TOKEN")
+# Тестируем наши Activities через curl
+echo -e "\n=== Testing our activities with curl ==="
 
-echo "Our activities:"
-echo $ACTIVITIES | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-activities = data.get('data', [])
-our_activities = [a for a in activities if 'ExtractViews' in a]
-for activity in our_activities:
-    print(f'  - {activity}')
-if our_activities:
-    print(f'Using: {our_activities[0]}')
-"
+ACTIVITIES=(
+    "rfZQOaSWaILCGB3wRheGj994IH1qCoy9f0tZiPrGs117K48n.ExtractViewsActivity"
+    "rfZQOaSWaILCGB3wRheGj994IH1qCoy9f0tZiPrGs117K48n.FreshViewExtractor1757953464"
+    "rfZQOaSWaILCGB3wRheGj994IH1qCoy9f0tZiPrGs117K48n.RevitViewExtractorFinal"
+)
 
-# Try to create workitem
-ACTIVITY_ID="${CLIENT_ID}.ExtractViewsActivity"
-echo "Creating workitem with activity: $ACTIVITY_ID"
+for ACTIVITY in "${ACTIVITIES[@]}"; do
+    echo -e "\nTesting activity: $ACTIVITY"
+    
+    # Создаем workitem через curl
+    curl -X POST \
+        "https://developer.api.autodesk.com/da/us-east/v3/workitems" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "activityId": "'$ACTIVITY'",
+            "arguments": {
+                "inputFile": {
+                    "url": "https://github.com/Developer-Autodesk/forge-tutorial-postman/raw/master/Collections/DA4R-Tutorial/SampleFiles/DeleteWalls.rvt"
+                },
+                "result": {
+                    "url": "https://httpbin.org/put"
+                }
+            }
+        }' \
+        -w "\nHTTP Status: %{http_code}\n" \
+        -s
+    
+    echo -e "\n---"
+done
 
-WORKITEM_DATA='{
-  "activityId": "'$ACTIVITY_ID'",
-  "arguments": {
-    "inputFile": {
-      "url": "https://github.com/Developer-Autodesk/forge-tutorial-postman/raw/master/Collections/DA4R-Tutorial/SampleFiles/DeleteWalls.rvt",
-      "verb": "get"
-    },
-    "result": {
-      "url": "https://httpbin.org/put",
-      "verb": "put"
-    }
-  }
-}'
+echo -e "\n=== Testing with different formats ==="
 
-echo "Request data:"
-echo $WORKITEM_DATA | python3 -m json.tool
+# Пробуем разные форматы ID
+FORMATS=(
+    "rfZQOaSWaILCGB3wRheGj994IH1qCoy9f0tZiPrGs117K48n.ExtractViewsActivity+1"
+    "ExtractViewsActivity"
+    "rfZQOaSWaILCGB3wRheGj994IH1qCoy9f0tZiPrGs117K48n.ExtractViewsActivity+\$LATEST"
+)
 
-WORKITEM_RESPONSE=$(curl -s -X POST \
-  "https://developer.api.autodesk.com/da/us-east/v3/workitems" \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d "$WORKITEM_DATA")
-
-echo "Response:"
-echo $WORKITEM_RESPONSE | python3 -m json.tool
-
-# Check if successful
-if echo $WORKITEM_RESPONSE | grep -q '"id"'; then
-    WORKITEM_ID=$(echo $WORKITEM_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['id'])")
-    echo "✓ SUCCESS! Workitem created: $WORKITEM_ID"
-    echo "🎉 Our plugin is working!"
-else
-    echo "❌ Failed to create workitem"
-fi
+for FORMAT in "${FORMATS[@]}"; do
+    echo -e "\nTesting format: $FORMAT"
+    
+    curl -X POST \
+        "https://developer.api.autodesk.com/da/us-east/v3/workitems" \
+        -H "Authorization: Bearer $TOKEN" \
+        -H "Content-Type: application/json" \
+        -d '{
+            "activityId": "'$FORMAT'",
+            "arguments": {
+                "inputFile": {
+                    "url": "https://github.com/Developer-Autodesk/forge-tutorial-postman/raw/master/Collections/DA4R-Tutorial/SampleFiles/DeleteWalls.rvt"
+                },
+                "result": {
+                    "url": "https://httpbin.org/put"
+                }
+            }
+        }' \
+        -w "\nHTTP Status: %{http_code}\n" \
+        -s
+    
+    echo -e "\n---"
+done
