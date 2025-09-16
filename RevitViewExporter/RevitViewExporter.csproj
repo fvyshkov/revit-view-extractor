@@ -3,7 +3,7 @@
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProjectGuid>{B3E8B8B7-7A8D-4481-8A6C-D57F68B7C8A4}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
@@ -12,8 +12,9 @@
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -21,18 +22,30 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2026\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <!-- Альтернативные пути для других версий Revit -->
+    <!--
     <Reference Include="RevitAPI">
       <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPI.dll</HintPath>
       <Private>False</Private>
@@ -41,6 +54,12 @@
       <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    -->
+    <!-- Или используйте NuGet пакеты вместо прямых ссылок (не доступно для Revit 2026) -->
+    <!--
+    <PackageReference Include="Revit.RevitAPI.x64" Version="2022.0.0" />
+    <PackageReference Include="Revit.RevitAPIUI.x64" Version="2022.0.0" />
+    -->
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -57,6 +76,7 @@
   <ItemGroup>
     <Compile Include="App.cs" />
     <Compile Include="Commands\ExportViewsCommand.cs" />
+    <Compile Include="HeadlessApp.cs" />
     <Compile Include="Forms\ViewSelectorForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -87,9 +107,14 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>
-      if not exist "%25APPDATA%25\Autodesk\Revit\Addins\2022" mkdir "%25APPDATA%25\Autodesk\Revit\Addins\2022"
-      copy "$(ProjectDir)RevitViewExporter.addin" "%25APPDATA%25\Autodesk\Revit\Addins\2022"
-      copy "$(TargetDir)*.dll" "%25APPDATA%25\Autodesk\Revit\Addins\2022"
-    </PostBuildEvent>
+echo "Copying files to Revit Addins folder..."
+echo "Target path: %25APPDATA%25\Autodesk\Revit\Addins\2026"
+if not exist "%25APPDATA%25\Autodesk\Revit\Addins\2026" mkdir "%25APPDATA%25\Autodesk\Revit\Addins\2026"
+echo "Copying addin file from: $(ProjectDir)RevitViewExporter.addin"
+copy /Y "$(ProjectDir)RevitViewExporter.addin" "%25APPDATA%25\Autodesk\Revit\Addins\2026\"
+echo "Copying DLL from: $(TargetPath)"
+copy /Y "$(TargetPath)" "%25APPDATA%25\Autodesk\Revit\Addins\2026\"
+echo "Done copying files."
+</PostBuildEvent>
   </PropertyGroup>
 </Project>

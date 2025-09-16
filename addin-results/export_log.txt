@@ -1,0 +1,12 @@
+﻿Export started at 9/16/2025 8:18:47 PM
+Export folder: C:\Mac\Home\Documents\revit-2\addin-results
+Views to export: 1
+----------------------------------------
+View: South
+  Image: C:\Mac\Home\Documents\revit-2\addin-results\South - Elevation - South.png (2000x886)
+  JSON: C:\Mac\Home\Documents\revit-2\addin-results\South.annotations.json
+  Found 27 annotations
+  Types: WindowTag: 27
+----------------------------------------
+Export completed at 9/16/2025 8:18:59 PM
+Total views exported: 1

@@ -1,0 +1,9 @@
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.csproj.AssemblyReference.cache
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.Forms.ViewSelectorForm.resources
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.Properties.Resources.resources
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.csproj.GenerateResource.cache
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.csproj.CoreCompileInputs.cache
+Z:\Documents\revit-2\RevitViewExporter\bin\Debug\RevitViewExporter.dll
+Z:\Documents\revit-2\RevitViewExporter\bin\Debug\RevitViewExporter.pdb
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.dll
+Z:\Documents\revit-2\RevitViewExporter\obj\Debug\RevitViewExporter.pdb

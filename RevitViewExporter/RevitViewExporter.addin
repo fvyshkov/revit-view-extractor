@@ -7,5 +7,17 @@
     <ClientId>b3e8b8b7-7a8d-4481-8a6c-d57f68b7c8a4</ClientId>
     <VendorId>RevitViewExporter</VendorId>
     <VendorDescription>Revit View Exporter, https://github.com/yourusername/RevitViewExporter</VendorDescription>
+    <VisibilityMode>AlwaysVisible</VisibilityMode>
+    <AllowLoadIntoExistingSession>true</AllowLoadIntoExistingSession>
+    <LanguageType>Unknown</LanguageType>
+  </AddIn>
+  <AddIn Type="DBApplication">
+    <Name>Revit View Exporter Headless</Name>
+    <Assembly>RevitViewExporter.dll</Assembly>
+    <FullClassName>RevitViewExporter.HeadlessApp</FullClassName>
+    <ClientId>4d3c2b19-1e7a-4a3c-9c9c-0e2a1f9a5b11</ClientId>
+    <VendorId>RevitViewExporter</VendorId>
+    <VendorDescription>Headless export via RevitCoreConsole</VendorDescription>
+    <LanguageType>Unknown</LanguageType>
   </AddIn>
 </RevitAddIns>

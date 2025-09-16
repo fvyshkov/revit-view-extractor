@@ -4,10 +4,11 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 using Autodesk.Revit.DB;
+using View = Autodesk.Revit.DB.View;
 
 namespace RevitViewExporter.Forms
 {
-    public partial class ViewSelectorForm : Form
+    public partial class ViewSelectorForm : System.Windows.Forms.Form
     {
         private List<View> _allViews;
         private List<View> _selectedViews = new List<View>();
@@ -64,7 +65,7 @@ namespace RevitViewExporter.Forms
             {
                 ListViewItem item = new ListViewItem(view.Name);
                 item.SubItems.Add(view.ViewType.ToString());
-                item.SubItems.Add(view.Id.IntegerValue.ToString());
+                item.SubItems.Add(view.Id.ToString());
                 item.Tag = view;
                 
                 lstViews.Items.Add(item);
@@ -109,18 +110,18 @@ namespace RevitViewExporter.Forms
             // Check if any views are selected
             if (_selectedViews.Count == 0)
             {
-                MessageBox.Show("Please select at least one view to export.", "No Views Selected", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                System.Windows.Forms.MessageBox.Show("Please select at least one view to export.", "No Views Selected", 
+                    System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Warning);
                 return;
             }
             
-            DialogResult = DialogResult.OK;
+            DialogResult = System.Windows.Forms.DialogResult.OK;
             Close();
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            DialogResult = DialogResult.Cancel;
+            DialogResult = System.Windows.Forms.DialogResult.Cancel;
             Close();
         }
     }

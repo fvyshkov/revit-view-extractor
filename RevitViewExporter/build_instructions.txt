@@ -1,0 +1,71 @@
+# Инструкции по сборке плагина RevitViewExporter
+
+## Необходимые компоненты
+
+1. Windows 10 или новее
+2. Visual Studio 2019 или новее
+3. .NET Framework 4.8 SDK
+4. Установленный Revit (для ссылок на API)
+
+## Шаги по сборке
+
+1. Откройте проект в Visual Studio:
+   - Запустите Visual Studio
+   - Выберите "Open a project or solution"
+   - Найдите файл RevitViewExporter.csproj
+
+2. Обновите пути к Revit API DLL (если необходимо):
+   - Щелкните правой кнопкой мыши на проекте в Solution Explorer
+   - Выберите "Properties"
+   - Перейдите на вкладку "References"
+   - Обновите пути к:
+     - RevitAPI.dll (обычно в C:\Program Files\Autodesk\Revit 202X\)
+     - RevitAPIUI.dll (обычно в C:\Program Files\Autodesk\Revit 202X\)
+
+3. Выберите конфигурацию сборки:
+   - Release для финальной версии
+   - Debug для отладки
+
+4. Соберите проект:
+   - Нажмите Build > Build Solution (или F6)
+
+5. Найдите собранные файлы:
+   - Основной путь: RevitViewExporter\bin\Release\
+   - Необходимые файлы:
+     - RevitViewExporter.dll
+     - RevitViewExporter.addin
+
+## Установка в Revit
+
+### Автоматическая установка (через post-build событие)
+Если вы собираете проект в Visual Studio, post-build событие автоматически скопирует необходимые файлы в папку Revit Addins.
+
+### Ручная установка
+1. Скопируйте следующие файлы:
+   - RevitViewExporter.dll
+   - RevitViewExporter.addin
+
+2. Вставьте их в папку Revit Addins:
+   - C:\Users\[UserName]\AppData\Roaming\Autodesk\Revit\Addins\[RevitVersion]\
+   - Например: C:\Users\John\AppData\Roaming\Autodesk\Revit\Addins\2022\
+
+3. Перезапустите Revit
+
+## Проверка установки
+
+1. Запустите Revit
+2. Убедитесь, что появилась новая вкладка "View Exporter"
+3. Нажмите кнопку "Export Views" для запуска плагина
+
+## Решение проблем
+
+### Плагин не появляется в Revit
+- Проверьте, что файлы скопированы в правильную папку
+- Проверьте версию Revit (плагин должен соответствовать версии)
+- Проверьте журнал Revit на наличие ошибок загрузки плагина
+
+### Ошибки сборки
+- Убедитесь, что все ссылки на DLL корректны
+- Проверьте версию .NET Framework (должна быть 4.8)
+- Проверьте совместимость с вашей версией Revit
+

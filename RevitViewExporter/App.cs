@@ -4,6 +4,8 @@ using System.Reflection;
 using System.Windows.Media.Imaging;
 using Autodesk.Revit.UI;
 
+// Удаляем атрибут, так как он задается в .addin файле
+
 namespace RevitViewExporter
 {
     public class App : IExternalApplication
