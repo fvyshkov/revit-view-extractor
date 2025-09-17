@@ -1,4 +1,4 @@
-﻿Export started at 9/17/2025 6:35:07 PM
+﻿Export started at 9/17/2025 7:36:40 PM
 Export folder: C:\Mac\Home\Documents\revit-2\addin-results
 Views to export: 1
 ----------------------------------------
@@ -8,5 +8,5 @@ View: South
   Found 27 annotations
   Types: WindowTag: 27
 ----------------------------------------
-Export completed at 9/17/2025 6:35:18 PM
+Export completed at 9/17/2025 7:36:50 PM
 Total views exported: 1
