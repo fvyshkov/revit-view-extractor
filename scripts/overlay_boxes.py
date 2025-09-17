@@ -64,6 +64,12 @@ def map_to_pixels(x: float, y: float, crop_min: Tuple[float, float], crop_max: T
     py = img_h - int(round(v * img_h))
     return px, py
 
+def map_uv_to_pixels(u: float, v: float, img_w: int, img_h: int) -> Tuple[int, int]:
+    """Map normalized UV coordinates (0-1) to pixel coordinates"""
+    px = int(round(u * img_w))
+    py = int(round(v * img_h))
+    return px, py
+
 
 def clamp_box(px1: int, py1: int, px2: int, py2: int, img_w: int, img_h: int) -> Tuple[int, int, int, int]:
     x1, x2 = sorted((px1, px2))
@@ -118,23 +124,141 @@ def overlay_boxes(json_path: str, image_path: Optional[str], out_path: Optional[
     cmin = (float(crop_min["x"]), float(crop_min["y"]))
     cmax = (float(crop_max["x"]), float(crop_max["y"]))
 
+    # Check view type from JSON
+    view_type = data.get("viewType", "")
+    is_elevation = view_type.lower() in ["elevation", "section"] or view_name.lower().endswith("elevation")
+
     draw = ImageDraw.Draw(img)
     ann = data.get("annotations", [])
     for a in ann:
+        # Try to use different coordinate sources in order of preference:
+        # 1. pixelBBox - direct pixel coordinates
+        # 2. uvBBox - normalized coordinates (0-1)
+        # 3. flatBBox - 2D coordinates in view plane (for elevations: X,Z)
+        # 4. bbox - 3D model coordinates (fallback)
+        
+        # Check for pixelBBox (direct pixel coordinates)
+        pixel_bbox = a.get("pixelBBox")
+        if pixel_bbox and "min" in pixel_bbox and "max" in pixel_bbox:
+            px_min = pixel_bbox["min"]
+            px_max = pixel_bbox["max"]
+            if "x" in px_min and "y" in px_min and "x" in px_max and "y" in px_max:
+                x1c = int(px_min["x"])
+                y1c = int(px_min["y"])
+                x2c = int(px_max["x"])
+                y2c = int(px_max["y"])
+                # Draw thick blue rectangle (RGBA: a vivid blue)
+                draw.rectangle([(x1c, y1c), (x2c, y2c)], outline=(0, 102, 255, 255), width=line_width)
+                continue
+                
+        # Check for uvBBox (normalized coordinates)
+        uv_bbox = a.get("uvBBox")
+        if uv_bbox and "min" in uv_bbox and "max" in uv_bbox:
+            uv_min = uv_bbox["min"]
+            uv_max = uv_bbox["max"]
+            if "u" in uv_min and "v" in uv_min and "u" in uv_max and "v" in uv_max:
+                px1, py1 = map_uv_to_pixels(float(uv_min["u"]), float(uv_min["v"]), img_w, img_h)
+                px2, py2 = map_uv_to_pixels(float(uv_max["u"]), float(uv_max["v"]), img_w, img_h)
+                x1c, y1c, x2c, y2c = clamp_box(px1, py1, px2, py2, img_w, img_h)
+                # Draw thick blue rectangle (RGBA: a vivid blue)
+                draw.rectangle([(x1c, y1c), (x2c, y2c)], outline=(0, 102, 255, 255), width=line_width)
+                continue
+        
+        # Check for flatBBox (2D coordinates in view plane)
+        flat_bbox = a.get("flatBBox")
+        view_plane_axes = a.get("viewPlaneAxes", {})
+        if flat_bbox and "min" in flat_bbox and "max" in flat_bbox:
+            flat_min = flat_bbox["min"]
+            flat_max = flat_bbox["max"]
+            if "x" in flat_min and "y" in flat_min and "x" in flat_max and "y" in flat_max:
+                # Get the 2D coordinates from flatBBox
+                x1, y1 = float(flat_min["x"]), float(flat_min["y"])
+                x2, y2 = float(flat_max["x"]), float(flat_max["y"])
+                
+                # Get axis information if available
+                h_axis = view_plane_axes.get("horizontal", "x")
+                v_axis = view_plane_axes.get("vertical", "z" if is_elevation else "y")
+                
+                # Map to pixels using crop box
+                if is_elevation:
+                    # For elevations, map according to the view plane axes
+                    if h_axis == "x" and v_axis == "z":
+                        # X horizontal, Z vertical
+                        cmin_flat = (crop_min.get("x", 0), crop_min.get("z", 0))
+                        cmax_flat = (crop_max.get("x", 0), crop_max.get("z", 0))
+                    elif h_axis == "y" and v_axis == "z":
+                        # Y horizontal, Z vertical
+                        cmin_flat = (crop_min.get("y", 0), crop_min.get("z", 0))
+                        cmax_flat = (crop_max.get("y", 0), crop_max.get("z", 0))
+                    elif h_axis == "x" and v_axis == "y":
+                        # X horizontal, Y vertical
+                        cmin_flat = (crop_min.get("x", 0), crop_min.get("y", 0))
+                        cmax_flat = (crop_max.get("x", 0), crop_max.get("y", 0))
+                    else:
+                        # Default to X,Z
+                        cmin_flat = (crop_min.get("x", 0), crop_min.get("z", 0))
+                        cmax_flat = (crop_max.get("x", 0), crop_max.get("z", 0))
+                else:
+                    # For plans, map X,Y to screen
+                    cmin_flat = (crop_min.get("x", 0), crop_min.get("y", 0))
+                    cmax_flat = (crop_max.get("x", 0), crop_max.get("y", 0))
+                    
+                px1, py1 = map_to_pixels(x1, y1, cmin_flat, cmax_flat, img_w, img_h)
+                px2, py2 = map_to_pixels(x2, y2, cmin_flat, cmax_flat, img_w, img_h)
+                x1c, y1c, x2c, y2c = clamp_box(px1, py1, px2, py2, img_w, img_h)
+                # Draw thick blue rectangle (RGBA: a vivid blue)
+                draw.rectangle([(x1c, y1c), (x2c, y2c)], outline=(0, 102, 255, 255), width=line_width)
+                continue
+        
+        # Fallback: use 3D bbox
         bbox = a.get("bbox") or {}
         bmin = bbox.get("min") or {}
         bmax = bbox.get("max") or {}
-        if not all(k in bmin for k in ("x", "y")) or not all(k in bmax for k in ("x", "y")):
+        if not all(k in bmin for k in ("x", "y", "z")) or not all(k in bmax for k in ("x", "y", "z")):
             continue
 
-        x1, y1 = float(bmin["x"]), float(bmin["y"])
-        x2, y2 = float(bmax["x"]), float(bmax["y"])
+        # Get axis information if available from viewPlaneAxes
+        view_plane_axes = a.get("viewPlaneAxes", {})
+        h_axis = view_plane_axes.get("horizontal", "x")
+        v_axis = view_plane_axes.get("vertical", "z" if is_elevation else "y")
 
-        px1, py1 = map_to_pixels(x1, y1, cmin, cmax, img_w, img_h)
-        px2, py2 = map_to_pixels(x2, y2, cmin, cmax, img_w, img_h)
-
+        # For elevations, use the appropriate axes based on view orientation
+        if is_elevation:
+            if h_axis == "x" and v_axis == "z":
+                # X horizontal, Z vertical
+                x1, y1 = float(bmin["x"]), float(bmin["z"])
+                x2, y2 = float(bmax["x"]), float(bmax["z"])
+                cmin_3d = (crop_min.get("x", 0), crop_min.get("z", 0))
+                cmax_3d = (crop_max.get("x", 0), crop_max.get("z", 0))
+            elif h_axis == "y" and v_axis == "z":
+                # Y horizontal, Z vertical
+                x1, y1 = float(bmin["y"]), float(bmin["z"])
+                x2, y2 = float(bmax["y"]), float(bmax["z"])
+                cmin_3d = (crop_min.get("y", 0), crop_min.get("z", 0))
+                cmax_3d = (crop_max.get("y", 0), crop_max.get("z", 0))
+            elif h_axis == "x" and v_axis == "y":
+                # X horizontal, Y vertical
+                x1, y1 = float(bmin["x"]), float(bmin["y"])
+                x2, y2 = float(bmax["x"]), float(bmax["y"])
+                cmin_3d = (crop_min.get("x", 0), crop_min.get("y", 0))
+                cmax_3d = (crop_max.get("x", 0), crop_max.get("y", 0))
+            else:
+                # Default to X,Z for elevation
+                x1, y1 = float(bmin["x"]), float(bmin["z"])
+                x2, y2 = float(bmax["x"]), float(bmax["z"])
+                cmin_3d = (crop_min.get("x", 0), crop_min.get("z", 0))
+                cmax_3d = (crop_max.get("x", 0), crop_max.get("z", 0))
+        else:
+            # For plans, use X and Y
+            x1, y1 = float(bmin["x"]), float(bmin["y"])
+            x2, y2 = float(bmax["x"]), float(bmax["y"])
+            cmin_3d = (crop_min.get("x", 0), crop_min.get("y", 0))
+            cmax_3d = (crop_max.get("x", 0), crop_max.get("y", 0))
+            
+        px1, py1 = map_to_pixels(x1, y1, cmin_3d, cmax_3d, img_w, img_h)
+        px2, py2 = map_to_pixels(x2, y2, cmin_3d, cmax_3d, img_w, img_h)
         x1c, y1c, x2c, y2c = clamp_box(px1, py1, px2, py2, img_w, img_h)
-
+        
         # Draw thick blue rectangle (RGBA: a vivid blue)
         draw.rectangle([(x1c, y1c), (x2c, y2c)], outline=(0, 102, 255, 255), width=line_width)
 

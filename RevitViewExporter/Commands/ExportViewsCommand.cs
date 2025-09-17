@@ -211,6 +211,31 @@ namespace RevitViewExporter.Commands
                         {
                             log.WriteLine($"WARN: Failed to detect actual PNG path: {ex.Message}");
                         }
+
+                        // Fallback: if the detected path doesn't exist, try to find the best matching PNG
+                        try
+                        {
+                            if (!File.Exists(actualImagePath))
+                            {
+                                var allPngs = Directory.GetFiles(exportFolder, "*.png");
+                                // Prefer filenames containing the view name
+                                string best = allPngs
+                                    .OrderByDescending(p => File.GetLastWriteTime(p))
+                                    .FirstOrDefault(p => Path.GetFileName(p).IndexOf(view.Name, StringComparison.OrdinalIgnoreCase) >= 0);
+                                if (string.IsNullOrEmpty(best) && allPngs.Length > 0)
+                                {
+                                    best = allPngs.OrderByDescending(p => File.GetLastWriteTime(p)).First();
+                                }
+                                if (!string.IsNullOrEmpty(best))
+                                {
+                                    actualImagePath = best;
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            log.WriteLine($"WARN: PNG fallback search failed: {ex.Message}");
+                        }
                         
                         // After image export, also export annotations JSON with pixel-space boxes
                         var annotations = GetWindowTagAnnotations(doc, view);
@@ -420,6 +445,7 @@ namespace RevitViewExporter.Commands
             sb.Append("{\n");
             sb.AppendFormat("  \"viewId\": \"{0}\",\n", EscapeJsonString(view.Id.ToString()));
             sb.AppendFormat("  \"viewName\": \"{0}\",\n", EscapeJsonString(view.Name));
+            sb.AppendFormat("  \"viewType\": \"{0}\",\n", view.ViewType.ToString());
             sb.AppendFormat("  \"imageWidth\": {0},\n", imgW);
             sb.AppendFormat("  \"imageHeight\": {0},\n", imgH);
             if (!string.IsNullOrEmpty(imagePath))
@@ -446,9 +472,14 @@ namespace RevitViewExporter.Commands
                 sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }},\n", a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Y.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }}\n", a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append("      }\n");
-                // Also include pixel-space bbox by projecting to view plane using Right/Up and scaling by crop extents
+                // Also include pixel-space bbox by projecting to view plane
                 if (crop != null && imgW > 0 && imgH > 0)
                 {
+                    // For elevation views, use X and Z coordinates
+                    // For plan views, use X and Y coordinates
+                    bool isElevation = view.ViewType == ViewType.Elevation || 
+                                      view.ViewType == ViewType.Section;
+                    
                     XYZ origin = view.Origin;
                     XYZ right = view.RightDirection;
                     XYZ up = view.UpDirection;
@@ -481,10 +512,22 @@ namespace RevitViewExporter.Commands
 
                     // Tag bbox corners in (u,v)
                     List<XYZ> tagCorners = new List<XYZ>();
-                    foreach (double tx in new[] { a.Min.X, a.Max.X })
-                    foreach (double ty in new[] { a.Min.Y, a.Max.Y })
-                    foreach (double tz in new[] { a.Min.Z, a.Max.Z })
-                        tagCorners.Add(new XYZ(tx, ty, tz));
+                    
+                    // Use different corners based on view type
+                    if (isElevation)
+                    {
+                        // For elevations, use X and Z coordinates
+                        foreach (double tx in new[] { a.Min.X, a.Max.X })
+                        foreach (double tz in new[] { a.Min.Z, a.Max.Z })
+                            tagCorners.Add(new XYZ(tx, a.Min.Y, tz));
+                    }
+                    else
+                    {
+                        // For plans, use X and Y coordinates
+                        foreach (double tx in new[] { a.Min.X, a.Max.X })
+                        foreach (double ty in new[] { a.Min.Y, a.Max.Y })
+                            tagCorners.Add(new XYZ(tx, ty, a.Min.Z));
+                    }
 
                     double tuMin = double.PositiveInfinity, tvMin = double.PositiveInfinity;
                     double tuMax = double.NegativeInfinity, tvMax = double.NegativeInfinity;
@@ -495,11 +538,124 @@ namespace RevitViewExporter.Commands
                         if (v < tvMin) tvMin = v; if (v > tvMax) tvMax = v;
                     }
 
-                    int px1 = (int)Math.Round(((tuMin - cuMin) / du) * imgW);
-                    int px2 = (int)Math.Round(((tuMax - cuMin) / du) * imgW);
-                    int py1 = imgH - (int)Math.Round(((tvMin - cvMin) / dv) * imgH);
-                    int py2 = imgH - (int)Math.Round(((tvMax - cvMin) / dv) * imgH);
+                    // Add 2D coordinates in the view plane (flatBBox)
+                    if (isElevation)
+                    {
+                        // Determine which axes to use based on view orientation
+                        // We need to find which two axes are most aligned with the view plane
+                        
+                        // Get the view's normal vector
+                        XYZ viewNormal = view.ViewDirection;
+                        
+                        // Find which axis has the largest component in the normal
+                        double absX = Math.Abs(viewNormal.X);
+                        double absY = Math.Abs(viewNormal.Y);
+                        double absZ = Math.Abs(viewNormal.Z);
+                        
+                        // The axis with the largest component in the normal is perpendicular to the view
+                        // The other two axes are in the view plane
+                        
+                        bool useX = absX <= absY && absX <= absZ;
+                        bool useY = absY <= absX && absY <= absZ;
+                        bool useZ = absZ <= absX && absZ <= absY;
+                        
+                        // First coordinate (horizontal in view)
+                        double h1, h2;
+                        // Second coordinate (vertical in view)
+                        double v1, v2;
+                        
+                        // Determine which axes to use and store their names
+                        string hAxisName, vAxisName;
+                        
+                        if (!useX)
+                        {
+                            // X is perpendicular to view, use Y and Z
+                            h1 = Math.Min(a.Min.Y, a.Max.Y);
+                            h2 = Math.Max(a.Min.Y, a.Max.Y);
+                            v1 = Math.Min(a.Min.Z, a.Max.Z);
+                            v2 = Math.Max(a.Min.Z, a.Max.Z);
+                            hAxisName = "y";
+                            vAxisName = "z";
+                        }
+                        else if (!useY)
+                        {
+                            // Y is perpendicular to view, use X and Z
+                            h1 = Math.Min(a.Min.X, a.Max.X);
+                            h2 = Math.Max(a.Min.X, a.Max.X);
+                            v1 = Math.Min(a.Min.Z, a.Max.Z);
+                            v2 = Math.Max(a.Min.Z, a.Max.Z);
+                            hAxisName = "x";
+                            vAxisName = "z";
+                        }
+                        else
+                        {
+                            // Z is perpendicular to view, use X and Y
+                            h1 = Math.Min(a.Min.X, a.Max.X);
+                            h2 = Math.Max(a.Min.X, a.Max.X);
+                            v1 = Math.Min(a.Min.Y, a.Max.Y);
+                            v2 = Math.Max(a.Min.Y, a.Max.Y);
+                            hAxisName = "x";
+                            vAxisName = "y";
+                        }
+                        
+                        sb.Append(",\n");
+                        sb.Append("      \"flatBBox\": {\n");
+                        sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", h1.ToString(System.Globalization.CultureInfo.InvariantCulture), v1.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", h2.ToString(System.Globalization.CultureInfo.InvariantCulture), v2.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        sb.Append("      },\n");
+                        sb.Append("      \"viewPlaneAxes\": {\n");
+                        sb.AppendFormat("        \"horizontal\": \"{0}\",\n", hAxisName);
+                        sb.AppendFormat("        \"vertical\": \"{0}\"\n", vAxisName);
+                        sb.Append("      }\n");
+                    }
+                    else
+                    {
+                        // For plans: X is horizontal, Y is vertical
+                        double x1 = Math.Min(a.Min.X, a.Max.X);
+                        double x2 = Math.Max(a.Min.X, a.Max.X);
+                        double y1 = Math.Min(a.Min.Y, a.Max.Y);
+                        double y2 = Math.Max(a.Min.Y, a.Max.Y);
+                        
+                        sb.Append(",\n");
+                        sb.Append("      \"flatBBox\": {\n");
+                        sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", x1.ToString(System.Globalization.CultureInfo.InvariantCulture), y1.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", x2.ToString(System.Globalization.CultureInfo.InvariantCulture), y2.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                        sb.Append("      },\n");
+                        sb.Append("      \"viewPlaneAxes\": {\n");
+                        sb.Append("        \"horizontal\": \"x\",\n");
+                        sb.Append("        \"vertical\": \"y\"\n");
+                        sb.Append("      }\n");
+                    }
+                    
+                    // Normalized image-space box (u in [0,1] left→right, v in [0,1] top→bottom)
+                    double uNorm1 = (tuMin - cuMin) / du;
+                    double vNorm1 = 1.0 - (tvMin - cvMin) / dv; // flip vertically to match image origin at top-left
+                    double uNorm2 = (tuMax - cuMin) / du;
+                    double vNorm2 = 1.0 - (tvMax - cvMin) / dv;
+                    double uMinN = Math.Min(uNorm1, uNorm2);
+                    double uMaxN = Math.Max(uNorm1, uNorm2);
+                    double vMinN = Math.Min(vNorm1, vNorm2);
+                    double vMaxN = Math.Max(vNorm1, vNorm2);
 
+                    sb.Append(",\n");
+                    sb.Append("      \"uvBBox\": {\n");
+                    sb.AppendFormat("        \"min\": {{ \"u\": {0}, \"v\": {1} }},\n", uMinN.ToString(System.Globalization.CultureInfo.InvariantCulture), vMinN.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    sb.AppendFormat("        \"max\": {{ \"u\": {0}, \"v\": {1} }}\n", uMaxN.ToString(System.Globalization.CultureInfo.InvariantCulture), vMaxN.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    sb.Append("      }\n");
+
+                    // Map to image coordinates and ensure they're within bounds
+                    int px1 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(((tuMin - cuMin) / du) * imgW)));
+                    int px2 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(((tuMax - cuMin) / du) * imgW)));
+                    int py1 = Math.Max(0, Math.Min(imgH-1, imgH - (int)Math.Round(((tvMin - cvMin) / dv) * imgH)));
+                    int py2 = Math.Max(0, Math.Min(imgH-1, imgH - (int)Math.Round(((tvMax - cvMin) / dv) * imgH)));
+
+                    // Skip if box is too small or outside image bounds
+                    if (Math.Abs(px2 - px1) < 5 || Math.Abs(py2 - py1) < 5)
+                    {
+                        // Skip this pixelBBox
+                        continue;
+                    }
+                    
                     sb.Append(",\n");
                     sb.Append("      \"pixelBBox\": {\n");
                     sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", Math.Min(px1, px2), Math.Min(py1, py2));
