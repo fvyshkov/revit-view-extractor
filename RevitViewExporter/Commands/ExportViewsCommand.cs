@@ -161,6 +161,7 @@ namespace RevitViewExporter.Commands
                 // Export each view
                 foreach (View view in views)
                 {
+                    log.WriteLine($"Exporting view: {view.Name}");
                     try
                     {
                         // Update progress
@@ -239,6 +240,7 @@ namespace RevitViewExporter.Commands
                         
                         // After image export, also export annotations JSON with pixel-space boxes
                         var annotations = GetWindowTagAnnotations(doc, view);
+                        log.WriteLine($"Found {annotations.Count} annotations");
                         string jsonPath = Path.Combine(exportFolder, Path.GetFileNameWithoutExtension(fileName) + ".annotations.json");
 
                         // Read actual image size to compute mapping
