@@ -12,5 +12,5 @@ Export Crop Box Size: W=258.00, H=121.58, D=161.83
 View CropBox Min: (-133.11, -21.58, -161.83)
 View CropBox Max: (124.89, 100.00, -0.00)
 View CropBox Size: W=258.00, H=121.58, D=161.83
-Total Annotations: 27
+Total Annotations: 3
 =========================

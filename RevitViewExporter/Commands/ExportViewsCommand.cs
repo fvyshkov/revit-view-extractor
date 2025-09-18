@@ -420,22 +420,50 @@ namespace RevitViewExporter.Commands
                 XYZ cropMin = cropBox.Min;
                 XYZ cropMax = cropBox.Max;
                 
+                // DEBUG: Log the coordinates for comparison
+                using (var debugLog = new System.IO.StreamWriter(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "debug_coords.txt"), true, System.Text.Encoding.UTF8))
+                {
+                    debugLog.WriteLine($"=== COORDINATE COMPARISON ===\nTag: {tag.Id}\nText: {tag.TagText}\n");
+                    debugLog.WriteLine($"TagHeadPosition: ({tagHeadPosition.X:F3}, {tagHeadPosition.Y:F3}, {tagHeadPosition.Z:F3})");
+                    debugLog.WriteLine($"CropBox.Min: ({cropMin.X:F3}, {cropMin.Y:F3}, {cropMin.Z:F3})");
+                    debugLog.WriteLine($"CropBox.Max: ({cropMax.X:F3}, {cropMax.Y:F3}, {cropMax.Z:F3})");
+                    
+                    // Check if the tag is within the crop box
+                    bool isXInRange = tagHeadPosition.X >= cropMin.X && tagHeadPosition.X <= cropMax.X;
+                    bool isYInRange = tagHeadPosition.Y >= cropMin.Y && tagHeadPosition.Y <= cropMax.Y;
+                    bool isZInRange = tagHeadPosition.Z >= cropMin.Z && tagHeadPosition.Z <= cropMax.Z;
+                    debugLog.WriteLine($"Is tag within crop box? X: {isXInRange}, Y: {isYInRange}, Z: {isZInRange}");
+                    debugLog.WriteLine("===========================\n");
+                }
+                
                 // Use tag head position for center, then create a box around it
                 // For elevation views: X is horizontal, Z is vertical
                 double tagSize = 3.0; // Size in model units (adjust as needed)
                 
                 // Create a box around the tag head position
                 // Ensure the box is within the crop box bounds
-                double relativeX = Math.Max(cropMin.X, Math.Min(cropMax.X, tagHeadPosition.X - tagSize/2));
+                double tagX = Math.Max(cropMin.X + tagSize, Math.Min(cropMax.X - tagSize, tagHeadPosition.X));
+                double relativeX = tagX - tagSize;
                 double relativeY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z)); // Use Z for elevation vertical coordinate
                 
                 // Log Y coordinate for debugging
                 double relativeY_usingY = tagHeadPosition.Y;
                 
                 // Calculate max coordinates
-                // Ensure the box is within the crop box bounds
-                double maxX = Math.Max(cropMin.X, Math.Min(cropMax.X, tagHeadPosition.X + tagSize/2));
+                // Ensure the box is within the crop box bounds and has width
+                double maxX = tagX + tagSize;
                 double maxY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z + tagSize)); // Make box taller than wide
+                
+                // Make sure box has width even at the edges of the view
+                if (Math.Abs(maxX - relativeX) < 1.0)
+                {
+                    // If at left edge, move max right
+                    if (Math.Abs(relativeX - cropMin.X) < 0.1)
+                        maxX = relativeX + tagSize;
+                    // If at right edge, move min left
+                    else if (Math.Abs(maxX - cropMax.X) < 0.1)
+                        relativeX = maxX - tagSize;
+                }
                 
                 // Create 3D coordinates with all three dimensions (X, Y, Z)
                 XYZ min2D = new XYZ(relativeX, tagHeadPosition.Y, relativeY);
