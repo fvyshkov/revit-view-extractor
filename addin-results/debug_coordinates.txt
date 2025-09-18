@@ -1,0 +1,16 @@
+﻿=== MAXIMUM DEBUG INFO ===
+View: South (ID: 855058)
+View Type: Elevation
+Image Size: 2000 x 977
+View Origin: (4.11, -56.83, 0.00)
+View Direction: (0.00, -1.00, 0.00)
+View Up Direction: (0.00, 0.00, 1.00)
+View Right Direction: (1.00, 0.00, -0.00)
+Export Crop Box Min: (-133.11, -21.58, -161.83)
+Export Crop Box Max: (124.89, 100.00, -0.00)
+Export Crop Box Size: W=258.00, H=121.58, D=161.83
+View CropBox Min: (-133.11, -21.58, -161.83)
+View CropBox Max: (124.89, 100.00, -0.00)
+View CropBox Size: W=258.00, H=121.58, D=161.83
+Total Annotations: 27
+=========================

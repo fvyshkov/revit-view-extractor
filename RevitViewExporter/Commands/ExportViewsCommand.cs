@@ -238,6 +238,9 @@ namespace RevitViewExporter.Commands
                             log.WriteLine($"WARN: PNG fallback search failed: {ex.Message}");
                         }
                         
+                        // After image export, get viewport corner coordinates for reference
+                        var cornerCoords = GetViewportCornerCoordinates(doc, view, log);
+                        
                         // After image export, also export annotations JSON with pixel-space boxes
                         var annotations = GetWindowTagAnnotations(doc, view, log);
                         log.WriteLine($"Found {annotations.Count} annotations");
@@ -276,7 +279,7 @@ namespace RevitViewExporter.Commands
 
                         // Provide crop box for mapping
                         var crop = view.CropBox;
-                        WriteAnnotationsJson(jsonPath, view, annotations, imgW, imgH, crop, actualImagePath);
+                        WriteAnnotationsJson(jsonPath, view, annotations, imgW, imgH, crop, actualImagePath, cornerCoords);
 
                         exportedCount++;
                     }
@@ -334,9 +337,6 @@ namespace RevitViewExporter.Commands
                 log.WriteLine($"tag bounding box: {tag.get_BoundingBox(view)}");
                 ///////////////////
                 XYZ tagPosition2D = tag.TagHeadPosition;
-    
-                // tagPosition2D содержит X, Y координаты в единицах модели
-                // Z координата обычно равна 0 для 2D view
                 double x = tagPosition2D.X;
                 double y = tagPosition2D.Y;
                 log.WriteLine($"tag position 2D: ({x}, {y})");
@@ -390,12 +390,51 @@ namespace RevitViewExporter.Commands
                     continue;
                 }
 
-                // Bounding box in model coordinates for this view
-                BoundingBoxXYZ bb = tag.get_BoundingBox(view);
-                if (bb == null)
+                // Get 2D coordinates in view plane instead of 3D model coordinates
+                BoundingBoxXYZ bb3D = tag.get_BoundingBox(view);
+                if (bb3D == null)
                 {
                     continue;
                 }
+
+                // Use the tag's actual bounding box in the view coordinate system
+                // This gives us the real screen coordinates where the tag appears
+                BoundingBoxXYZ tagBB = tag.get_BoundingBox(view);
+                if (tagBB == null)
+                {
+                    continue; // Skip if we can't get tag bounds
+                }
+
+                // Get view's crop box for reference
+                BoundingBoxXYZ cropBox = view.CropBox;
+                if (cropBox == null)
+                {
+                    continue; // Skip if no crop box
+                }
+
+                // Use tag bounding box directly - these are already in view coordinates
+                // Convert to crop-relative coordinates
+                XYZ tagMin = tagBB.Min;
+                XYZ tagMax = tagBB.Max;
+                
+                // Get crop box dimensions in view coordinates
+                XYZ cropMin = cropBox.Min;
+                XYZ cropMax = cropBox.Max;
+                
+                // Use tag coordinates directly (in model units) for now - we'll normalize later
+                // This will help us understand the actual coordinate distribution
+                double relativeX = tagMin.X;
+                double relativeY = tagMin.Z; // Use Z for elevation
+                
+                // Also try Y coordinate for comparison
+                double relativeY_usingY = (tagMin.Y - cropMin.Y) / (cropMax.Y - cropMin.Y);
+                
+                // Use tag coordinates directly (in model units) 
+                double maxX = tagMax.X;
+                double maxY = tagMax.Z; // Use Z for elevation
+                
+                XYZ min2D = new XYZ(relativeX, relativeY, 0);
+                XYZ max2D = new XYZ(maxX, maxY, 0);
 
                 // Determine host element and tag text
                 string text = string.Empty;
@@ -429,15 +468,36 @@ namespace RevitViewExporter.Commands
                     // ignore if API not available
                 }
 
-                // Fallback: if no text was resolved, keep empty string
+                // MAXIMUM DEBUG for each tag (after text is determined) - write to log file
+                string tagDebugPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "debug_tags.txt");
+                using (var tagLog = new System.IO.StreamWriter(tagDebugPath, true, System.Text.Encoding.UTF8)) // append mode
+                {
+                    tagLog.WriteLine($"--- TAG {tag.Id} DEBUG ---");
+                    tagLog.WriteLine($"Tag Text: '{text}'");
+                    tagLog.WriteLine($"Tag Head Position: ({tag.TagHeadPosition.X:F2}, {tag.TagHeadPosition.Y:F2}, {tag.TagHeadPosition.Z:F2})");
+                    tagLog.WriteLine($"Tag BoundingBox Min: ({tagMin.X:F2}, {tagMin.Y:F2}, {tagMin.Z:F2})");
+                    tagLog.WriteLine($"Tag BoundingBox Max: ({tagMax.X:F2}, {tagMax.Y:F2}, {tagMax.Z:F2})");
+                    tagLog.WriteLine($"Tag BoundingBox Size: W={tagMax.X - tagMin.X:F2}, H={tagMax.Y - tagMin.Y:F2}, D={tagMax.Z - tagMin.Z:F2}");
+                    tagLog.WriteLine($"Crop BoundingBox Min: ({cropMin.X:F2}, {cropMin.Y:F2}, {cropMin.Z:F2})");
+                    tagLog.WriteLine($"Crop BoundingBox Max: ({cropMax.X:F2}, {cropMax.Y:F2}, {cropMax.Z:F2})");
+                    tagLog.WriteLine($"Relative X (using X): {relativeX:F3}");
+                    tagLog.WriteLine($"Relative Y (using Z): {relativeY:F3}");
+                    tagLog.WriteLine($"Relative Y (using Y): {relativeY_usingY:F3}");
+                    bool isInsideCrop = (relativeX >= 0 && relativeX <= 1 && relativeY >= 0 && relativeY <= 1);
+                    tagLog.WriteLine($"Tag is {(isInsideCrop ? "INSIDE" : "OUTSIDE")} crop box");
+                    tagLog.WriteLine("-------------------------");
+                    tagLog.Flush();
+                }
+
+                // Store 2D coordinates
                 result.Add(new AnnotationBox
                 {
                     Type = tagType,
                     ElementId = hostElementId,
                     TagId = tag.Id.ToString(),
                     Text = text ?? string.Empty,
-                    Min = bb.Min,
-                    Max = bb.Max
+                    Min = min2D,  // 2D coordinates in view plane
+                    Max = max2D   // 2D coordinates in view plane
                 });
             }
 
@@ -455,8 +515,45 @@ namespace RevitViewExporter.Commands
                 .Replace("\t", "\\t");
         }
 
-        private void WriteAnnotationsJson(string path, View view, List<AnnotationBox> annotations, int imgW, int imgH, BoundingBoxXYZ crop, string imagePath)
+        private void WriteAnnotationsJson(string path, View view, List<AnnotationBox> annotations, int imgW, int imgH, BoundingBoxXYZ crop, string imagePath, Dictionary<string, XYZ> cornerCoords)
         {
+            // MAXIMUM DEBUG INFO - write to log file
+            string debugLogPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(path), "debug_coordinates.txt");
+            using (var debugLog = new System.IO.StreamWriter(debugLogPath, false, System.Text.Encoding.UTF8))
+            {
+                debugLog.WriteLine("=== MAXIMUM DEBUG INFO ===");
+                debugLog.WriteLine($"View: {view.Name} (ID: {view.Id})");
+                debugLog.WriteLine($"View Type: {view.ViewType}");
+                debugLog.WriteLine($"Image Size: {imgW} x {imgH}");
+                
+                // View coordinate system info
+                debugLog.WriteLine($"View Origin: ({view.Origin.X:F2}, {view.Origin.Y:F2}, {view.Origin.Z:F2})");
+                debugLog.WriteLine($"View Direction: ({view.ViewDirection.X:F2}, {view.ViewDirection.Y:F2}, {view.ViewDirection.Z:F2})");
+                debugLog.WriteLine($"View Up Direction: ({view.UpDirection.X:F2}, {view.UpDirection.Y:F2}, {view.UpDirection.Z:F2})");
+                debugLog.WriteLine($"View Right Direction: ({view.RightDirection.X:F2}, {view.RightDirection.Y:F2}, {view.RightDirection.Z:F2})");
+                
+                // Crop box info
+                if (crop != null)
+                {
+                    debugLog.WriteLine($"Export Crop Box Min: ({crop.Min.X:F2}, {crop.Min.Y:F2}, {crop.Min.Z:F2})");
+                    debugLog.WriteLine($"Export Crop Box Max: ({crop.Max.X:F2}, {crop.Max.Y:F2}, {crop.Max.Z:F2})");
+                    debugLog.WriteLine($"Export Crop Box Size: W={crop.Max.X - crop.Min.X:F2}, H={crop.Max.Y - crop.Min.Y:F2}, D={crop.Max.Z - crop.Min.Z:F2}");
+                }
+                
+                // View CropBox info (different from export crop)
+                BoundingBoxXYZ viewCrop = view.CropBox;
+                if (viewCrop != null)
+                {
+                    debugLog.WriteLine($"View CropBox Min: ({viewCrop.Min.X:F2}, {viewCrop.Min.Y:F2}, {viewCrop.Min.Z:F2})");
+                    debugLog.WriteLine($"View CropBox Max: ({viewCrop.Max.X:F2}, {viewCrop.Max.Y:F2}, {viewCrop.Max.Z:F2})");
+                    debugLog.WriteLine($"View CropBox Size: W={viewCrop.Max.X - viewCrop.Min.X:F2}, H={viewCrop.Max.Y - viewCrop.Min.Y:F2}, D={viewCrop.Max.Z - viewCrop.Min.Z:F2}");
+                }
+                
+                debugLog.WriteLine($"Total Annotations: {annotations.Count}");
+                debugLog.WriteLine("=========================");
+                debugLog.Flush();
+            }
+
             var sb = new StringBuilder();
             sb.Append("{\n");
             sb.AppendFormat("  \"viewId\": \"{0}\",\n", EscapeJsonString(view.Id.ToString()));
@@ -475,6 +572,24 @@ namespace RevitViewExporter.Commands
                 sb.AppendFormat("    \"max\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }}\n", crop.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), crop.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture), crop.Max.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append("  },\n");
             }
+            
+            // Add viewport corner coordinates for reference mapping
+            if (cornerCoords != null && cornerCoords.Count > 0)
+            {
+                sb.Append("  \"viewportCorners\": {\n");
+                bool first = true;
+                foreach (var kvp in cornerCoords)
+                {
+                    if (!first) sb.Append(",\n");
+                    sb.AppendFormat("    \"{0}\": {{ \"x\": {1}, \"y\": {2}, \"z\": {3} }}", 
+                        kvp.Key, 
+                        kvp.Value.X.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        kvp.Value.Y.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        kvp.Value.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    first = false;
+                }
+                sb.Append("\n  },\n");
+            }
             sb.Append("  \"annotations\": [\n");
             for (int i = 0; i < annotations.Count; i++)
             {
@@ -484,31 +599,19 @@ namespace RevitViewExporter.Commands
                 sb.AppendFormat("      \"elementId\": \"{0}\",\n", EscapeJsonString(a.ElementId ?? string.Empty));
                 sb.AppendFormat("      \"tagId\": \"{0}\",\n", EscapeJsonString(a.TagId ?? string.Empty));
                 sb.AppendFormat("      \"text\": \"{0}\",\n", EscapeJsonString(a.Text ?? string.Empty));
-                sb.Append("      \"bbox\": {\n");
-                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }},\n", a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Y.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }}\n", a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("      \"bbox2D\": {\n");
+                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append("      }\n");
-                // Also include pixel-space bbox by projecting to view plane
+                // Convert 2D view coordinates to pixel coordinates
                 if (crop != null && imgW > 0 && imgH > 0)
                 {
-                    // For elevation views, use X and Z coordinates
-                    // For plan views, use X and Y coordinates
-                    bool isElevation = view.ViewType == ViewType.Elevation || 
-                                      view.ViewType == ViewType.Section;
-                    
+                    // Get crop box bounds in view coordinates
                     XYZ origin = view.Origin;
                     XYZ right = view.RightDirection;
                     XYZ up = view.UpDirection;
 
-                    Func<XYZ, (double u, double v)> proj = (pt) =>
-                    {
-                        XYZ d = pt - origin;
-                        double u = d.DotProduct(right);
-                        double v = d.DotProduct(up);
-                        return (u, v);
-                    };
-
-                    // Crop extents in (u,v)
+                    // Project crop box corners to view coordinates
                     List<XYZ> cropCorners = new List<XYZ>();
                     foreach (double cx in new[] { crop.Min.X, crop.Max.X })
                     foreach (double cy in new[] { crop.Min.Y, crop.Max.Y })
@@ -517,166 +620,56 @@ namespace RevitViewExporter.Commands
 
                     double cuMin = double.PositiveInfinity, cvMin = double.PositiveInfinity;
                     double cuMax = double.NegativeInfinity, cvMax = double.NegativeInfinity;
-                    foreach (var cpt in cropCorners)
+                    foreach (var corner in cropCorners)
                     {
-                        var (u, v) = proj(cpt);
+                        XYZ delta = corner - origin;
+                        double u = delta.DotProduct(right);
+                        double v = delta.DotProduct(up);
                         if (u < cuMin) cuMin = u; if (u > cuMax) cuMax = u;
                         if (v < cvMin) cvMin = v; if (v > cvMax) cvMax = v;
                     }
                     double du = Math.Max(1e-9, cuMax - cuMin);
                     double dv = Math.Max(1e-9, cvMax - cvMin);
 
-                    // Tag bbox corners in (u,v)
-                    List<XYZ> tagCorners = new List<XYZ>();
-                    
-                    // Use different corners based on view type
-                    if (isElevation)
-                    {
-                        // For elevations, use X and Z coordinates
-                        foreach (double tx in new[] { a.Min.X, a.Max.X })
-                        foreach (double tz in new[] { a.Min.Z, a.Max.Z })
-                            tagCorners.Add(new XYZ(tx, a.Min.Y, tz));
-                    }
-                    else
-                    {
-                        // For plans, use X and Y coordinates
-                        foreach (double tx in new[] { a.Min.X, a.Max.X })
-                        foreach (double ty in new[] { a.Min.Y, a.Max.Y })
-                            tagCorners.Add(new XYZ(tx, ty, a.Min.Z));
-                    }
+                    // Tag coordinates are already in 2D view space (a.Min.X, a.Min.Y)
+                    double tagUMin = a.Min.X;
+                    double tagVMin = a.Min.Y;
+                    double tagUMax = a.Max.X;
+                    double tagVMax = a.Max.Y;
 
-                    double tuMin = double.PositiveInfinity, tvMin = double.PositiveInfinity;
-                    double tuMax = double.NegativeInfinity, tvMax = double.NegativeInfinity;
-                    foreach (var tpt in tagCorners)
-                    {
-                        var (u, v) = proj(tpt);
-                        if (u < tuMin) tuMin = u; if (u > tuMax) tuMax = u;
-                        if (v < tvMin) tvMin = v; if (v > tvMax) tvMax = v;
-                    }
-
-                    // Add 2D coordinates in the view plane (flatBBox)
-                    if (isElevation)
-                    {
-                        // Determine which axes to use based on view orientation
-                        // We need to find which two axes are most aligned with the view plane
-                        
-                        // Get the view's normal vector
-                        XYZ viewNormal = view.ViewDirection;
-                        
-                        // Find which axis has the largest component in the normal
-                        double absX = Math.Abs(viewNormal.X);
-                        double absY = Math.Abs(viewNormal.Y);
-                        double absZ = Math.Abs(viewNormal.Z);
-                        
-                        // The axis with the largest component in the normal is perpendicular to the view
-                        // The other two axes are in the view plane
-                        
-                        bool useX = absX <= absY && absX <= absZ;
-                        bool useY = absY <= absX && absY <= absZ;
-                        bool useZ = absZ <= absX && absZ <= absY;
-                        
-                        // First coordinate (horizontal in view)
-                        double h1, h2;
-                        // Second coordinate (vertical in view)
-                        double v1, v2;
-                        
-                        // Determine which axes to use and store their names
-                        string hAxisName, vAxisName;
-                        
-                        if (!useX)
-                        {
-                            // X is perpendicular to view, use Y and Z
-                            h1 = Math.Min(a.Min.Y, a.Max.Y);
-                            h2 = Math.Max(a.Min.Y, a.Max.Y);
-                            v1 = Math.Min(a.Min.Z, a.Max.Z);
-                            v2 = Math.Max(a.Min.Z, a.Max.Z);
-                            hAxisName = "y";
-                            vAxisName = "z";
-                        }
-                        else if (!useY)
-                        {
-                            // Y is perpendicular to view, use X and Z
-                            h1 = Math.Min(a.Min.X, a.Max.X);
-                            h2 = Math.Max(a.Min.X, a.Max.X);
-                            v1 = Math.Min(a.Min.Z, a.Max.Z);
-                            v2 = Math.Max(a.Min.Z, a.Max.Z);
-                            hAxisName = "x";
-                            vAxisName = "z";
-                        }
-                        else
-                        {
-                            // Z is perpendicular to view, use X and Y
-                            h1 = Math.Min(a.Min.X, a.Max.X);
-                            h2 = Math.Max(a.Min.X, a.Max.X);
-                            v1 = Math.Min(a.Min.Y, a.Max.Y);
-                            v2 = Math.Max(a.Min.Y, a.Max.Y);
-                            hAxisName = "x";
-                            vAxisName = "y";
-                        }
-                        
-                        sb.Append(",\n");
-                        sb.Append("      \"flatBBox\": {\n");
-                        sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", h1.ToString(System.Globalization.CultureInfo.InvariantCulture), v1.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                        sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", h2.ToString(System.Globalization.CultureInfo.InvariantCulture), v2.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                        sb.Append("      },\n");
-                        sb.Append("      \"viewPlaneAxes\": {\n");
-                        sb.AppendFormat("        \"horizontal\": \"{0}\",\n", hAxisName);
-                        sb.AppendFormat("        \"vertical\": \"{0}\"\n", vAxisName);
-                        sb.Append("      }\n");
-                    }
-                    else
-                    {
-                        // For plans: X is horizontal, Y is vertical
-                        double x1 = Math.Min(a.Min.X, a.Max.X);
-                        double x2 = Math.Max(a.Min.X, a.Max.X);
-                        double y1 = Math.Min(a.Min.Y, a.Max.Y);
-                        double y2 = Math.Max(a.Min.Y, a.Max.Y);
-                        
-                        sb.Append(",\n");
-                        sb.Append("      \"flatBBox\": {\n");
-                        sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", x1.ToString(System.Globalization.CultureInfo.InvariantCulture), y1.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                        sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", x2.ToString(System.Globalization.CultureInfo.InvariantCulture), y2.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                        sb.Append("      },\n");
-                        sb.Append("      \"viewPlaneAxes\": {\n");
-                        sb.Append("        \"horizontal\": \"x\",\n");
-                        sb.Append("        \"vertical\": \"y\"\n");
-                        sb.Append("      }\n");
-                    }
+                    // Normalize to [0,1] range
+                    double uNorm1 = (tagUMin - cuMin) / du;
+                    double vNorm1 = 1.0 - (tagVMin - cvMin) / dv; // flip Y for image coordinates
+                    double uNorm2 = (tagUMax - cuMin) / du;
+                    double vNorm2 = 1.0 - (tagVMax - cvMin) / dv;
                     
-                    // Normalized image-space box (u in [0,1] left→right, v in [0,1] top→bottom)
-                    double uNorm1 = (tuMin - cuMin) / du;
-                    double vNorm1 = 1.0 - (tvMin - cvMin) / dv; // flip vertically to match image origin at top-left
-                    double uNorm2 = (tuMax - cuMin) / du;
-                    double vNorm2 = 1.0 - (tvMax - cvMin) / dv;
                     double uMinN = Math.Min(uNorm1, uNorm2);
                     double uMaxN = Math.Max(uNorm1, uNorm2);
                     double vMinN = Math.Min(vNorm1, vNorm2);
                     double vMaxN = Math.Max(vNorm1, vNorm2);
 
+                    // Add normalized coordinates
                     sb.Append(",\n");
                     sb.Append("      \"uvBBox\": {\n");
                     sb.AppendFormat("        \"min\": {{ \"u\": {0}, \"v\": {1} }},\n", uMinN.ToString(System.Globalization.CultureInfo.InvariantCulture), vMinN.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     sb.AppendFormat("        \"max\": {{ \"u\": {0}, \"v\": {1} }}\n", uMaxN.ToString(System.Globalization.CultureInfo.InvariantCulture), vMaxN.ToString(System.Globalization.CultureInfo.InvariantCulture));
                     sb.Append("      }\n");
 
-                    // Map to image coordinates and ensure they're within bounds
-                    int px1 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(((tuMin - cuMin) / du) * imgW)));
-                    int px2 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(((tuMax - cuMin) / du) * imgW)));
-                    int py1 = Math.Max(0, Math.Min(imgH-1, imgH - (int)Math.Round(((tvMin - cvMin) / dv) * imgH)));
-                    int py2 = Math.Max(0, Math.Min(imgH-1, imgH - (int)Math.Round(((tvMax - cvMin) / dv) * imgH)));
+                    // Convert to pixel coordinates
+                    int px1 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(uMinN * imgW)));
+                    int px2 = Math.Max(0, Math.Min(imgW-1, (int)Math.Round(uMaxN * imgW)));
+                    int py1 = Math.Max(0, Math.Min(imgH-1, (int)Math.Round(vMinN * imgH)));
+                    int py2 = Math.Max(0, Math.Min(imgH-1, (int)Math.Round(vMaxN * imgH)));
 
-                    // Skip if box is too small or outside image bounds
-                    if (Math.Abs(px2 - px1) < 5 || Math.Abs(py2 - py1) < 5)
+                    // Add pixel coordinates if box is large enough
+                    if (Math.Abs(px2 - px1) >= 2 && Math.Abs(py2 - py1) >= 2)
                     {
-                        // Skip this pixelBBox
-                        continue;
+                        sb.Append(",\n");
+                        sb.Append("      \"pixelBBox\": {\n");
+                        sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", Math.Min(px1, px2), Math.Min(py1, py2));
+                        sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", Math.Max(px1, px2), Math.Max(py1, py2));
+                        sb.Append("      }\n");
                     }
-                    
-                    sb.Append(",\n");
-                    sb.Append("      \"pixelBBox\": {\n");
-                    sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", Math.Min(px1, px2), Math.Min(py1, py2));
-                    sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", Math.Max(px1, px2), Math.Max(py1, py2));
-                    sb.Append("      }\n");
                 }
                 sb.Append("    }");
                 if (i < annotations.Count - 1) sb.Append(",");
@@ -703,6 +696,49 @@ namespace RevitViewExporter.Commands
             }
             
             return fileName;
+        }
+
+        private Dictionary<string, XYZ> GetViewportCornerCoordinates(Document doc, View view, StreamWriter log)
+        {
+            var corners = new Dictionary<string, XYZ>();
+            
+            try
+            {
+                // Get the view's crop box which defines the viewport boundaries
+                BoundingBoxXYZ cropBox = view.CropBox;
+                if (cropBox == null)
+                {
+                    log.WriteLine("WARN: View has no crop box");
+                    return corners;
+                }
+
+                // Get crop box corners in model coordinates
+                XYZ cropMin = cropBox.Min;
+                XYZ cropMax = cropBox.Max;
+                
+                // For elevation views, we need X and Z coordinates (Y is depth)
+                // Define the 4 corners of the viewport
+                corners["TopLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMax.Z);
+                corners["TopRight"] = new XYZ(cropMax.X, cropMin.Y, cropMax.Z);
+                corners["BottomLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMin.Z);
+                corners["BottomRight"] = new XYZ(cropMax.X, cropMin.Y, cropMin.Z);
+                
+                // Log the corner coordinates
+                log.WriteLine("=== VIEWPORT CORNER COORDINATES ===");
+                log.WriteLine($"Crop Box Min: ({cropMin.X:F3}, {cropMin.Y:F3}, {cropMin.Z:F3})");
+                log.WriteLine($"Crop Box Max: ({cropMax.X:F3}, {cropMax.Y:F3}, {cropMax.Z:F3})");
+                log.WriteLine($"TopLeft (X,Z):     ({corners["TopLeft"].X:F3}, {corners["TopLeft"].Z:F3})");
+                log.WriteLine($"TopRight (X,Z):    ({corners["TopRight"].X:F3}, {corners["TopRight"].Z:F3})");
+                log.WriteLine($"BottomLeft (X,Z):  ({corners["BottomLeft"].X:F3}, {corners["BottomLeft"].Z:F3})");
+                log.WriteLine($"BottomRight (X,Z): ({corners["BottomRight"].X:F3}, {corners["BottomRight"].Z:F3})");
+                log.WriteLine("===================================");
+            }
+            catch (Exception ex)
+            {
+                log.WriteLine($"ERROR getting viewport corners: {ex.Message}");
+            }
+            
+            return corners;
         }
     }
 }

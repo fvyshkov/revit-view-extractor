@@ -1,8 +1,16 @@
-﻿Export started at 9/18/2025 9:26:19 AM
+﻿Export started at 9/18/2025 6:31:18 PM
 Export folder: C:\Mac\Home\Documents\revit-2\addin-results
 Views to export: 1
 ----------------------------------------
 Exporting view: South
+=== VIEWPORT CORNER COORDINATES ===
+Crop Box Min: (-133.113, -21.581, -161.834)
+Crop Box Max: (124.889, 100.000, -0.000)
+TopLeft (X,Z):     (-133.113, -0.000)
+TopRight (X,Z):    (124.889, -0.000)
+BottomLeft (X,Z):  (-133.113, -161.834)
+BottomRight (X,Z): (124.889, -161.834)
+===================================
 tag: Autodesk.Revit.DB.IndependentTag
 tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
 tag position 2D: (55.45236514290907, -28.225850844004878)
@@ -53,7 +61,7 @@ tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
 tag position 2D: (-25.53125000000022, -28.549980397455982)
 tag: Autodesk.Revit.DB.IndependentTag
 tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
-tag position 2D: (-25.44791666666689, -28.549980397455982)
+tag position 2D: (-138.6319642563913, -28.90479103488828)
 tag: Autodesk.Revit.DB.IndependentTag
 tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
 tag position 2D: (-31.94791666666689, -28.904791034888127)
@@ -83,13 +91,13 @@ tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
 tag position 2D: (56.033002224362, -28.775009171239144)
 tag: Autodesk.Revit.DB.IndependentTag
 tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
-tag position 2D: (61.2380877465745, -28.08974666208386)
+tag position 2D: (134.7642197995027, -28.193660629983206)
 Found 27 annotations
 View: South
-  Image: C:\Mac\Home\Documents\revit-2\addin-results\South - Elevation - South.png (2000x886)
+  Image: C:\Mac\Home\Documents\revit-2\addin-results\South - Elevation - South.png (2000x977)
   JSON: C:\Mac\Home\Documents\revit-2\addin-results\South.annotations.json
   Found 27 annotations
   Types: WindowTag: 27
 ----------------------------------------
-Export completed at 9/18/2025 9:26:36 AM
+Export completed at 9/18/2025 6:31:28 PM
 Total views exported: 1
