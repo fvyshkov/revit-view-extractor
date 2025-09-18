@@ -1,4 +1,4 @@
-﻿Export started at 9/18/2025 11:28:42 PM
+﻿Export started at 9/19/2025 12:18:25 AM
 Export folder: C:\Mac\Home\Documents\revit-2\addin-results
 Views to export: 1
 ----------------------------------------
@@ -14,7 +14,7 @@ Center (X,Z):      (-4.112, -80.917)
 ===================================
 tag: Autodesk.Revit.DB.IndependentTag
 tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
-tag position 2D: (-138.6319642563913, -28.90479103488828)
+tag position 2D: (-24.447916666666885, -28.90479103488828)
 Found 1 annotations
 View: South
   Image: C:\Mac\Home\Documents\revit-2\addin-results\South - Elevation - South.png (2000x949)
@@ -22,5 +22,5 @@ View: South
   Found 1 annotations
   Types: WindowTag: 1
 ----------------------------------------
-Export completed at 9/18/2025 11:28:52 PM
+Export completed at 9/19/2025 12:18:29 AM
 Total views exported: 1

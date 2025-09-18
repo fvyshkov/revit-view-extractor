@@ -421,7 +421,10 @@ namespace RevitViewExporter.Commands
                 XYZ cropMax = cropBox.Max;
                 
                 // DEBUG: Log the coordinates for comparison
-                using (var debugLog = new System.IO.StreamWriter(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "debug_coords.txt"), true, System.Text.Encoding.UTF8))
+                try {
+                    // Используем директорию addin-results
+                    string debugLogPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)), "addin-results", "debug_coords.txt");
+                    using (var debugLog = new System.IO.StreamWriter(debugLogPath, true, System.Text.Encoding.UTF8))
                 {
                     debugLog.WriteLine($"=== COORDINATE COMPARISON ===\nTag: {tag.Id}\nText: {tag.TagText}\n");
                     debugLog.WriteLine($"TagHeadPosition: ({tagHeadPosition.X:F3}, {tagHeadPosition.Y:F3}, {tagHeadPosition.Z:F3})");
@@ -434,6 +437,10 @@ namespace RevitViewExporter.Commands
                     bool isZInRange = tagHeadPosition.Z >= cropMin.Z && tagHeadPosition.Z <= cropMax.Z;
                     debugLog.WriteLine($"Is tag within crop box? X: {isXInRange}, Y: {isYInRange}, Z: {isZInRange}");
                     debugLog.WriteLine("===========================\n");
+                    }
+                } catch (Exception ex) {
+                    // Если возникла ошибка при записи лога, просто игнорируем её
+                    // Это не должно прерывать основной процесс экспорта
                 }
                 
                 // Создаем боксы гарантированно внутри вида
@@ -522,8 +529,10 @@ namespace RevitViewExporter.Commands
                 }
 
                 // MAXIMUM DEBUG for each tag (after text is determined) - write to log file
-                string tagDebugPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "debug_tags.txt");
-                using (var tagLog = new System.IO.StreamWriter(tagDebugPath, true, System.Text.Encoding.UTF8)) // append mode
+                try {
+                    // Используем директорию addin-results
+                    string tagDebugPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)), "addin-results", "debug_tags.txt");
+                    using (var tagLog = new System.IO.StreamWriter(tagDebugPath, true, System.Text.Encoding.UTF8)) // append mode
                 {
                     tagLog.WriteLine($"--- TAG {tag.Id} DEBUG ---");
                     tagLog.WriteLine($"Tag Text: '{text}'");
@@ -562,28 +571,22 @@ namespace RevitViewExporter.Commands
                         tagLog.WriteLine($"Error getting view.get_BoundingBox(null): {ex.Message}");
                     }
                     
-                    // 3. view.get_ViewRange() - диапазон просмотра (для планов)
+                    // 3. ViewRange - диапазон просмотра (для планов)
                     if (view.ViewType == ViewType.FloorPlan || view.ViewType == ViewType.CeilingPlan) {
                         try {
-                            var viewRange = view.GetViewRange();
-                            if (viewRange != null) {
-                                tagLog.WriteLine($"view.GetViewRange() exists for this view type");
-                            }
+                            // В данной версии API метод GetViewRange() недоступен
+                            tagLog.WriteLine($"ViewRange check skipped - API method not available");
                         } catch (Exception ex) {
-                            tagLog.WriteLine($"Error getting view.GetViewRange(): {ex.Message}");
+                            tagLog.WriteLine($"Error checking ViewRange: {ex.Message}");
                         }
                     }
                     
-                    // 4. view.CropRegion - регион обрезки (если есть)
+                    // 4. CropRegion - регион обрезки (если есть)
                     try {
-                        var cropRegion = view.CropRegion;
-                        if (cropRegion != null) {
-                            tagLog.WriteLine($"view.CropRegion exists");
-                        } else {
-                            tagLog.WriteLine("view.CropRegion is null");
-                        }
+                        // В данной версии API свойство CropRegion недоступно
+                        tagLog.WriteLine($"CropRegion check skipped - API property not available");
                     } catch (Exception ex) {
-                        tagLog.WriteLine($"Error getting view.CropRegion: {ex.Message}");
+                        tagLog.WriteLine($"Error checking CropRegion: {ex.Message}");
                     }
                     
                     // Остальная информация о теге
@@ -602,6 +605,10 @@ namespace RevitViewExporter.Commands
                     tagLog.WriteLine($"Tag is {(isInsideCrop ? "INSIDE" : "OUTSIDE")} crop box");
                     tagLog.WriteLine("-------------------------");
                     tagLog.Flush();
+                    }
+                } catch (Exception ex) {
+                    // Если возникла ошибка при записи лога, просто игнорируем её
+                    // Это не должно прерывать основной процесс экспорта
                 }
 
                 // Store 2D coordinates
@@ -932,7 +939,7 @@ namespace RevitViewExporter.Commands
                 log.WriteLine("===================================");
                 
                 // Дополнительно записываем в отдельный файл для более удобного анализа
-                string cornerLogPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "viewport_corners.txt");
+                string cornerLogPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)), "addin-results", "viewport_corners.txt");
                 using (var cornerLog = new System.IO.StreamWriter(cornerLogPath, false, System.Text.Encoding.UTF8))
                 {
                     cornerLog.WriteLine($"=== VIEWPORT CORNERS FOR VIEW: {view.Name} ===");
