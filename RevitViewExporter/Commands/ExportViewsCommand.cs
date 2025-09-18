@@ -421,17 +421,17 @@ namespace RevitViewExporter.Commands
                 XYZ cropMin = cropBox.Min;
                 XYZ cropMax = cropBox.Max;
                 
-                // Use tag coordinates directly (in model units) for now - we'll normalize later
-                // This will help us understand the actual coordinate distribution
+                // For elevation views, use X and Z coordinates for 2D mapping
+                // X is horizontal, Z is vertical for elevations
                 double relativeX = tagMin.X;
-                double relativeY = tagMin.Z; // Use Z for elevation
+                double relativeY = tagMin.Z; // Use Z for elevation vertical coordinate
                 
-                // Also try Y coordinate for comparison
+                // Also log Y coordinate for debugging
                 double relativeY_usingY = (tagMin.Y - cropMin.Y) / (cropMax.Y - cropMin.Y);
                 
-                // Use tag coordinates directly (in model units) 
+                // Use tag coordinates directly (in model units)
                 double maxX = tagMax.X;
-                double maxY = tagMax.Z; // Use Z for elevation
+                double maxY = tagMax.Z; // Use Z for elevation vertical coordinate
                 
                 XYZ min2D = new XYZ(relativeX, relativeY, 0);
                 XYZ max2D = new XYZ(maxX, maxY, 0);
@@ -680,13 +680,16 @@ namespace RevitViewExporter.Commands
                         if (tl != null && tr != null && bl != null)
                         {
                             double tlx = tl.X; double trx = tr.X; double tlz = tl.Z; double blz = bl.Z;
-                            // Our stored a.Min.Y/a.Max.Y came from tagBB.Min.Z/Max.Z but with opposite sign
-                            // Normalize to viewport Z sign: use negative of stored values
-                            double tagXMin = a.Min.X; double tagZMin = -a.Min.Y; // flip sign for Z
-                            double tagXMax = a.Max.X; double tagZMax = -a.Max.Y;
+                            // For elevation views, a.Min.Y and a.Max.Y actually contain Z coordinates
+                            // Use the same coordinate system for both viewport corners and annotations
+                            double tagXMin = a.Min.X; double tagZMin = a.Min.Y; // a.Min.Y contains Z coordinate for elevation
+                            double tagXMax = a.Max.X; double tagZMax = a.Max.Y; // a.Max.Y contains Z coordinate for elevation
 
+                            // Calculate normalized coordinates in viewport space
+                            // For X (horizontal): 0 = left edge, 1 = right edge
                             double uVp1 = (tagXMin - tlx) / Math.Max(1e-9, (trx - tlx));
                             double uVp2 = (tagXMax - tlx) / Math.Max(1e-9, (trx - tlx));
+                            // For Z (vertical): 0 = bottom edge, 1 = top edge
                             double vVp1 = (tagZMin - blz) / Math.Max(1e-9, (tlz - blz));
                             double vVp2 = (tagZMax - blz) / Math.Max(1e-9, (tlz - blz));
 
@@ -769,7 +772,7 @@ namespace RevitViewExporter.Commands
                 XYZ cropMax = cropBox.Max;
                 
                 // For elevation views, we need X and Z coordinates (Y is depth)
-                // Define the 4 corners of the viewport
+                // Define the 4 corners of the viewport using the SAME coordinate system as annotations
                 corners["TopLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMax.Z);
                 corners["TopRight"] = new XYZ(cropMax.X, cropMin.Y, cropMax.Z);
                 corners["BottomLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMin.Z);

@@ -7,3 +7,12 @@ Z:\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.csproj.
 Z:\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.csproj.CoreCompileInputs.cache
 Z:\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.dll
 Z:\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.pdb
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\bin\Release\RevitViewExporter.dll
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\bin\Release\RevitViewExporter.pdb
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.csproj.AssemblyReference.cache
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.Forms.ViewSelectorForm.resources
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.Properties.Resources.resources
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.csproj.GenerateResource.cache
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.csproj.CoreCompileInputs.cache
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.dll
+C:\Mac\Home\Documents\revit-2\RevitViewExporter\obj\x64\Release\RevitViewExporter.pdb
