@@ -436,33 +436,46 @@ namespace RevitViewExporter.Commands
                     debugLog.WriteLine("===========================\n");
                 }
                 
-                // Use tag head position for center, then create a box around it
-                // For elevation views: X is horizontal, Z is vertical
-                double tagSize = 3.0; // Size in model units (adjust as needed)
+                // Простое решение - создаем квадратный бокс в абсолютных координатах модели
+                double boxHalfSize = 5.0;
                 
-                // Create a box around the tag head position
-                // Ensure the box is within the crop box bounds
-                double tagX = Math.Max(cropMin.X + tagSize, Math.Min(cropMax.X - tagSize, tagHeadPosition.X));
-                double relativeX = tagX - tagSize;
-                double relativeY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z)); // Use Z for elevation vertical coordinate
+                // Создаем бокс вокруг позиции тега в координатах модели
+                // Используем абсолютные координаты модели, не пытаясь преобразовывать их
+                double relativeX = tagHeadPosition.X - boxHalfSize;
+                double relativeY = tagHeadPosition.Z - boxHalfSize; // Используем Z для вертикали
+                double maxX = tagHeadPosition.X + boxHalfSize;
+                double maxY = tagHeadPosition.Z + boxHalfSize;
                 
-                // Log Y coordinate for debugging
+                // Сохраняем также оригинальные координаты для отладки
+                double originalX = tagHeadPosition.X;
+                double originalY = tagHeadPosition.Z;
+                
+                // Для отладки
                 double relativeY_usingY = tagHeadPosition.Y;
                 
-                // Calculate max coordinates
-                // Ensure the box is within the crop box bounds and has width
-                double maxX = tagX + tagSize;
-                double maxY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z + tagSize)); // Make box taller than wide
-                
-                // Make sure box has width even at the edges of the view
-                if (Math.Abs(maxX - relativeX) < 1.0)
+                // Логируем координаты для отладки
+                using (var coordLog = new System.IO.StreamWriter(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "tag_coords.txt"), true, System.Text.Encoding.UTF8))
                 {
-                    // If at left edge, move max right
-                    if (Math.Abs(relativeX - cropMin.X) < 0.1)
-                        maxX = relativeX + tagSize;
-                    // If at right edge, move min left
-                    else if (Math.Abs(maxX - cropMax.X) < 0.1)
-                        relativeX = maxX - tagSize;
+                    coordLog.WriteLine($"=== TAG {tag.Id} COORDINATES ===");
+                    coordLog.WriteLine($"Tag Text: '{tag.TagText}'");
+                    coordLog.WriteLine($"Tag Position (MODEL): ({tagHeadPosition.X:F3}, {tagHeadPosition.Y:F3}, {tagHeadPosition.Z:F3})");
+                    coordLog.WriteLine($"Box Min (MODEL): ({relativeX:F3}, {relativeY_usingY:F3}, {relativeY:F3})");
+                    coordLog.WriteLine($"Box Max (MODEL): ({maxX:F3}, {relativeY_usingY:F3}, {maxY:F3})");
+                    coordLog.WriteLine($"Box Size: Width={maxX - relativeX:F3}, Height={maxY - relativeY:F3}");
+                    
+                    // Проверка, находится ли бокс в пределах CropBox
+                    bool isXInRange = relativeX >= cropMin.X && maxX <= cropMax.X;
+                    bool isZInRange = relativeY >= cropMin.Z && maxY <= cropMax.Z;
+                    coordLog.WriteLine($"Is box within crop box? X: {isXInRange}, Z: {isZInRange}");
+                    
+                    // Расстояния до границ CropBox
+                    coordLog.WriteLine($"Distance to left edge: {relativeX - cropMin.X:F3}");
+                    coordLog.WriteLine($"Distance to right edge: {cropMax.X - maxX:F3}");
+                    coordLog.WriteLine($"Distance to bottom edge: {relativeY - cropMin.Z:F3}");
+                    coordLog.WriteLine($"Distance to top edge: {cropMax.Z - maxY:F3}");
+                    
+                    coordLog.WriteLine("===========================");
+                    coordLog.Flush();
                 }
                 
                 // Create 3D coordinates with all three dimensions (X, Y, Z)
@@ -819,14 +832,27 @@ namespace RevitViewExporter.Commands
                 XYZ cropMin = cropBox.Min;
                 XYZ cropMax = cropBox.Max;
                 
-                // For elevation views, we need X and Z coordinates (Y is depth)
-                // Define the 4 corners of the viewport using the SAME coordinate system as annotations
+                // Для фасадов и разрезов нам нужны X и Z координаты (Y - глубина)
+                // Определяем 4 угла видового экрана, используя ТУ ЖЕ систему координат, что и для аннотаций
                 corners["TopLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMax.Z);
                 corners["TopRight"] = new XYZ(cropMax.X, cropMin.Y, cropMax.Z);
                 corners["BottomLeft"] = new XYZ(cropMin.X, cropMin.Y, cropMin.Z);
                 corners["BottomRight"] = new XYZ(cropMax.X, cropMin.Y, cropMin.Z);
                 
-                // Log the corner coordinates
+                // Добавим также координаты центра для отладки
+                corners["Center"] = new XYZ(
+                    (cropMin.X + cropMax.X) / 2.0,
+                    cropMin.Y,
+                    (cropMin.Z + cropMax.Z) / 2.0
+                );
+                
+                // Добавим точки на краях для лучшего отслеживания
+                corners["MidTop"] = new XYZ((cropMin.X + cropMax.X) / 2.0, cropMin.Y, cropMax.Z);
+                corners["MidBottom"] = new XYZ((cropMin.X + cropMax.X) / 2.0, cropMin.Y, cropMin.Z);
+                corners["MidLeft"] = new XYZ(cropMin.X, cropMin.Y, (cropMin.Z + cropMax.Z) / 2.0);
+                corners["MidRight"] = new XYZ(cropMax.X, cropMin.Y, (cropMin.Z + cropMax.Z) / 2.0);
+                
+                // Логируем координаты углов
                 log.WriteLine("=== VIEWPORT CORNER COORDINATES ===");
                 log.WriteLine($"Crop Box Min: ({cropMin.X:F3}, {cropMin.Y:F3}, {cropMin.Z:F3})");
                 log.WriteLine($"Crop Box Max: ({cropMax.X:F3}, {cropMax.Y:F3}, {cropMax.Z:F3})");
@@ -834,7 +860,26 @@ namespace RevitViewExporter.Commands
                 log.WriteLine($"TopRight (X,Z):    ({corners["TopRight"].X:F3}, {corners["TopRight"].Z:F3})");
                 log.WriteLine($"BottomLeft (X,Z):  ({corners["BottomLeft"].X:F3}, {corners["BottomLeft"].Z:F3})");
                 log.WriteLine($"BottomRight (X,Z): ({corners["BottomRight"].X:F3}, {corners["BottomRight"].Z:F3})");
+                log.WriteLine($"Center (X,Z):      ({corners["Center"].X:F3}, {corners["Center"].Z:F3})");
                 log.WriteLine("===================================");
+                
+                // Дополнительно записываем в отдельный файл для более удобного анализа
+                string cornerLogPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "viewport_corners.txt");
+                using (var cornerLog = new System.IO.StreamWriter(cornerLogPath, false, System.Text.Encoding.UTF8))
+                {
+                    cornerLog.WriteLine($"=== VIEWPORT CORNERS FOR VIEW: {view.Name} ===");
+                    cornerLog.WriteLine($"View Type: {view.ViewType}");
+                    cornerLog.WriteLine($"Crop Box Min: ({cropMin.X:F3}, {cropMin.Y:F3}, {cropMin.Z:F3})");
+                    cornerLog.WriteLine($"Crop Box Max: ({cropMax.X:F3}, {cropMax.Y:F3}, {cropMax.Z:F3})");
+                    cornerLog.WriteLine($"Width: {cropMax.X - cropMin.X:F3}, Height: {cropMax.Z - cropMin.Z:F3}");
+                    
+                    foreach (var corner in corners)
+                    {
+                        cornerLog.WriteLine($"{corner.Key}: ({corner.Value.X:F3}, {corner.Value.Y:F3}, {corner.Value.Z:F3})");
+                    }
+                    
+                    cornerLog.WriteLine("===================================");
+                }
             }
             catch (Exception ex)
             {
