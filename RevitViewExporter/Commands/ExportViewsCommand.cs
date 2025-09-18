@@ -412,29 +412,34 @@ namespace RevitViewExporter.Commands
                     continue; // Skip if no crop box
                 }
 
-                // Use tag bounding box directly - these are already in view coordinates
-                // Convert to crop-relative coordinates
-                XYZ tagMin = tagBB.Min;
-                XYZ tagMax = tagBB.Max;
+                // Get tag position in MODEL coordinates (not view coordinates)
+                // This will ensure consistency with viewport corners
+                XYZ tagHeadPosition = tag.TagHeadPosition;
                 
-                // Get crop box dimensions in view coordinates
+                // Get crop box dimensions in model coordinates
                 XYZ cropMin = cropBox.Min;
                 XYZ cropMax = cropBox.Max;
                 
-                // For elevation views, use X and Z coordinates for 2D mapping
-                // X is horizontal, Z is vertical for elevations
-                double relativeX = tagMin.X;
-                double relativeY = tagMin.Z; // Use Z for elevation vertical coordinate
+                // Use tag head position for center, then create a box around it
+                // For elevation views: X is horizontal, Z is vertical
+                double tagSize = 3.0; // Size in model units (adjust as needed)
                 
-                // Also log Y coordinate for debugging
-                double relativeY_usingY = (tagMin.Y - cropMin.Y) / (cropMax.Y - cropMin.Y);
+                // Create a box around the tag head position
+                // Ensure the box is within the crop box bounds
+                double relativeX = Math.Max(cropMin.X, Math.Min(cropMax.X, tagHeadPosition.X - tagSize/2));
+                double relativeY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z)); // Use Z for elevation vertical coordinate
                 
-                // Use tag coordinates directly (in model units)
-                double maxX = tagMax.X;
-                double maxY = tagMax.Z; // Use Z for elevation vertical coordinate
+                // Log Y coordinate for debugging
+                double relativeY_usingY = tagHeadPosition.Y;
                 
-                XYZ min2D = new XYZ(relativeX, relativeY, 0);
-                XYZ max2D = new XYZ(maxX, maxY, 0);
+                // Calculate max coordinates
+                // Ensure the box is within the crop box bounds
+                double maxX = Math.Max(cropMin.X, Math.Min(cropMax.X, tagHeadPosition.X + tagSize/2));
+                double maxY = Math.Max(cropMin.Z, Math.Min(cropMax.Z, tagHeadPosition.Z + tagSize)); // Make box taller than wide
+                
+                // Create 3D coordinates with all three dimensions (X, Y, Z)
+                XYZ min2D = new XYZ(relativeX, tagHeadPosition.Y, relativeY);
+                XYZ max2D = new XYZ(maxX, tagHeadPosition.Y, maxY);
 
                 // Determine host element and tag text
                 string text = string.Empty;
@@ -475,9 +480,10 @@ namespace RevitViewExporter.Commands
                     tagLog.WriteLine($"--- TAG {tag.Id} DEBUG ---");
                     tagLog.WriteLine($"Tag Text: '{text}'");
                     tagLog.WriteLine($"Tag Head Position: ({tag.TagHeadPosition.X:F2}, {tag.TagHeadPosition.Y:F2}, {tag.TagHeadPosition.Z:F2})");
-                    tagLog.WriteLine($"Tag BoundingBox Min: ({tagMin.X:F2}, {tagMin.Y:F2}, {tagMin.Z:F2})");
-                    tagLog.WriteLine($"Tag BoundingBox Max: ({tagMax.X:F2}, {tagMax.Y:F2}, {tagMax.Z:F2})");
-                    tagLog.WriteLine($"Tag BoundingBox Size: W={tagMax.X - tagMin.X:F2}, H={tagMax.Y - tagMin.Y:F2}, D={tagMax.Z - tagMin.Z:F2}");
+                    tagLog.WriteLine($"Tag Head Position (MODEL): ({tagHeadPosition.X:F2}, {tagHeadPosition.Y:F2}, {tagHeadPosition.Z:F2})");
+                    tagLog.WriteLine($"Tag Box Min (MODEL): ({relativeX:F2}, {tagHeadPosition.Y:F2}, {relativeY:F2})");
+                    tagLog.WriteLine($"Tag Box Max (MODEL): ({maxX:F2}, {tagHeadPosition.Y:F2}, {maxY:F2})");
+                    tagLog.WriteLine($"Tag Box Size (MODEL): W={maxX - relativeX:F2}, H=0, D={maxY - relativeY:F2}");
                     tagLog.WriteLine($"Crop BoundingBox Min: ({cropMin.X:F2}, {cropMin.Y:F2}, {cropMin.Z:F2})");
                     tagLog.WriteLine($"Crop BoundingBox Max: ({cropMax.X:F2}, {cropMax.Y:F2}, {cropMax.Z:F2})");
                     tagLog.WriteLine($"Relative X (using X): {relativeX:F3}");
@@ -599,9 +605,21 @@ namespace RevitViewExporter.Commands
                 sb.AppendFormat("      \"elementId\": \"{0}\",\n", EscapeJsonString(a.ElementId ?? string.Empty));
                 sb.AppendFormat("      \"tagId\": \"{0}\",\n", EscapeJsonString(a.TagId ?? string.Empty));
                 sb.AppendFormat("      \"text\": \"{0}\",\n", EscapeJsonString(a.Text ?? string.Empty));
+                sb.Append("      \"bbox3D\": {\n");
+                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }},\n", 
+                    a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), 
+                    a.Min.Y.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    a.Min.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1}, \"z\": {2} }}\n", 
+                    a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), 
+                    a.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    a.Max.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("      }\n");
+                
+                // Also keep the old bbox2D for backward compatibility
                 sb.Append("      \"bbox2D\": {\n");
-                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Y.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", a.Min.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Min.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", a.Max.X.ToString(System.Globalization.CultureInfo.InvariantCulture), a.Max.Z.ToString(System.Globalization.CultureInfo.InvariantCulture));
                 sb.Append("      }\n");
                 // Convert 2D view coordinates to pixel coordinates
                 if (crop != null && imgW > 0 && imgH > 0)
@@ -680,10 +698,12 @@ namespace RevitViewExporter.Commands
                         if (tl != null && tr != null && bl != null)
                         {
                             double tlx = tl.X; double trx = tr.X; double tlz = tl.Z; double blz = bl.Z;
-                            // For elevation views, a.Min.Y and a.Max.Y actually contain Z coordinates
-                            // Use the same coordinate system for both viewport corners and annotations
-                            double tagXMin = a.Min.X; double tagZMin = a.Min.Y; // a.Min.Y contains Z coordinate for elevation
-                            double tagXMax = a.Max.X; double tagZMax = a.Max.Y; // a.Max.Y contains Z coordinate for elevation
+                            // We're now using MODEL coordinates for both viewport corners and annotations
+                            // For elevation views: X is horizontal, Z is vertical
+                            double tagXMin = a.Min.X; // X coordinate in model
+                            double tagZMin = a.Min.Y; // Y field now stores Z coordinate (vertical)
+                            double tagXMax = a.Max.X; // X coordinate in model
+                            double tagZMax = a.Max.Y; // Y field now stores Z coordinate (vertical)
 
                             // Calculate normalized coordinates in viewport space
                             // For X (horizontal): 0 = left edge, 1 = right edge
