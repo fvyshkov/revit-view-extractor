@@ -168,18 +168,67 @@ def draw_annotations_on_image(json_path: str, output_path: Optional[str] = None,
         bbox = None
         coord_source = ""
         
-        # 1. Try pixelBBox (direct pixel coordinates)
-        # DISABLE pixelBBox - use only bbox2D for consistent coordinate system
-        if False and "pixelBBox" in ann:
-            pixel_bbox = ann["pixelBBox"]
-            if "min" in pixel_bbox and "max" in pixel_bbox:
-                px_min = pixel_bbox["min"]
-                px_max = pixel_bbox["max"]
-                if "x" in px_min and "y" in px_min and "x" in px_max and "y" in px_max:
-                    bbox = (int(px_min["x"]), int(px_min["y"]), int(px_max["x"]), int(px_max["y"]))
-                    coord_source = "pixelBBox"
+        # 1. Try bboxViewport (normalized u,v in viewport basis)
+        if not bbox and "bboxViewport" in ann:
+            bvp = ann["bboxViewport"]
+            if "min" in bvp and "max" in bvp:
+                mn, mx = bvp["min"], bvp["max"]
+                if all(k in mn for k in ("u","v")) and all(k in mx for k in ("u","v")):
+                    u1 = float(mn["u"]); v1 = float(mn["v"]) 
+                    u2 = float(mx["u"]); v2 = float(mx["v"]) 
+                    x1 = int(max(0,min(1,u1))*img_w)
+                    x2 = int(max(0,min(1,u2))*img_w)
+                    # В bboxViewport координаты v=1 соответствуют верху изображения
+                    # а v=0 соответствуют низу изображения
+                    y1 = int((1.0 - max(0,min(1,v2)))*img_h)
+                    y2 = int((1.0 - max(0,min(1,v1)))*img_h)
+                    bbox = (x1,y1,x2,y2)
+                    coord_source = "bboxViewport"
         
-        # 2. Try pixelViewport (highest priority if present)
+        # 2. Try pixelViewport (if present)
+        if not bbox and "pixelViewport" in ann:
+            pv = ann["pixelViewport"]
+            if "min" in pv and "max" in pv:
+                mn, mx = pv["min"], pv["max"]
+                if all(k in mn for k in ("x","y")) and all(k in mx for k in ("x","y")):
+                    x1 = int(mn["x"]); y1 = int(mn["y"])
+                    x2 = int(mx["x"]); y2 = int(mx["y"])
+                    bbox = (x1,y1,x2,y2)
+                    coord_source = "pixelViewport"
+        
+        # 3. If viewportCorners + bbox2D exist, recompute viewport mapping from bbox2D (robust)
+        if not bbox and "bbox2D" in ann and data.get("viewportCorners"):
+            vp = data.get("viewportCorners", {})
+            tl, tr, bl = vp.get("TopLeft"), vp.get("TopRight"), vp.get("BottomLeft")
+            if tl and tr and bl:
+                tlx, tlz = float(tl["x"]), float(tl["z"])  # top z
+                trx = float(tr["x"])                         # right x
+                blz = float(bl["z"])                         # bottom z
+                b2d = ann["bbox2D"]; mn=b2d["min"]; mx=b2d["max"]
+                x1 = float(mn["x"]); y1m = float(mn["y"])  # model
+                x2 = float(mx["x"]); y2m = float(mx["y"])  # model
+
+                def map_with(z_from_y_sign: float):
+                    z1 = z_from_y_sign * y1m; z2 = z_from_y_sign * y2m
+                    u1 = (x1 - tlx) / (trx - tlx) if (trx - tlx) != 0 else 0.0
+                    u2 = (x2 - tlx) / (trx - tlx) if (trx - tlx) != 0 else 1.0
+                    v1 = (z1 - blz) / (tlz - blz) if (tlz - blz) != 0 else 0.0
+                    v2 = (z2 - blz) / (tlz - blz) if (tlz - blz) != 0 else 1.0
+                    # keep unclamped for score
+                    u1c=max(0,min(1,u1)); u2c=max(0,min(1,u2))
+                    v1c=max(0,min(1,v1)); v2c=max(0,min(1,v2))
+                    px1=int(u1c*img_w); px2=int(u2c*img_w)
+                    # Invert Y mapping for boxes (observed image axis)
+                    py1=int(min(v1c,v2c)*img_h); py2=int(max(v1c,v2c)*img_h)
+                    spread_in = abs((min(1,max(0,v2))-min(1,max(0,v1))))
+                    return (px1,py1,px2,py2), spread_in
+
+                cand_pos, score_pos = map_with(+1.0)
+                cand_neg, score_neg = map_with(-1.0)
+                bbox = cand_neg if score_neg >= score_pos else cand_pos
+                coord_source = "bbox2D(vp-fit)"
+
+        # 3. Try pixelViewport (if present)
         if not bbox and "pixelViewport" in ann:
             pv = ann["pixelViewport"]
             if "min" in pv and "max" in pv:
@@ -190,22 +239,7 @@ def draw_annotations_on_image(json_path: str, output_path: Optional[str] = None,
                     bbox = (x1,y1,x2,y2)
                     coord_source = "pixelViewport"
 
-        # 3. Try bboxViewport (normalized u,v in viewport basis)
-        if not bbox and "bboxViewport" in ann:
-            bvp = ann["bboxViewport"]
-            if "min" in bvp and "max" in bvp:
-                mn, mx = bvp["min"], bvp["max"]
-                if all(k in mn for k in ("u","v")) and all(k in mx for k in ("u","v")):
-                    u1 = float(mn["u"]); v1 = float(mn["v"]) 
-                    u2 = float(mx["u"]); v2 = float(mx["v"]) 
-                    x1 = int(max(0,min(1,u1))*img_w)
-                    x2 = int(max(0,min(1,u2))*img_w)
-                    y1 = int((1.0 - max(0,min(1,v2)))*img_h)
-                    y2 = int((1.0 - max(0,min(1,v1)))*img_h)
-                    bbox = (x1,y1,x2,y2)
-                    coord_source = "bboxViewport"
-
-        # 4. Try bbox2D (legacy) - PRIORITY after viewport
+        # 4. Try bbox2D (legacy) - lowest priority
         if not bbox and "bbox2D" in ann:
             bbox2d = ann["bbox2D"]
             if "min" in bbox2d and "max" in bbox2d:

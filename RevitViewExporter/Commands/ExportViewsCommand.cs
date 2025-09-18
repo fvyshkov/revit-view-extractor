@@ -680,8 +680,10 @@ namespace RevitViewExporter.Commands
                         if (tl != null && tr != null && bl != null)
                         {
                             double tlx = tl.X; double trx = tr.X; double tlz = tl.Z; double blz = bl.Z;
-                            double tagXMin = a.Min.X; double tagZMin = a.Min.Y; // Y stores Z
-                            double tagXMax = a.Max.X; double tagZMax = a.Max.Y;
+                            // Our stored a.Min.Y/a.Max.Y came from tagBB.Min.Z/Max.Z but with opposite sign
+                            // Normalize to viewport Z sign: use negative of stored values
+                            double tagXMin = a.Min.X; double tagZMin = -a.Min.Y; // flip sign for Z
+                            double tagXMax = a.Max.X; double tagZMax = -a.Max.Y;
 
                             double uVp1 = (tagXMin - tlx) / Math.Max(1e-9, (trx - tlx));
                             double uVp2 = (tagXMax - tlx) / Math.Max(1e-9, (trx - tlx));
