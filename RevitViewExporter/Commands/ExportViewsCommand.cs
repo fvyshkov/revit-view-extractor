@@ -239,7 +239,7 @@ namespace RevitViewExporter.Commands
                         }
                         
                         // After image export, also export annotations JSON with pixel-space boxes
-                        var annotations = GetWindowTagAnnotations(doc, view);
+                        var annotations = GetWindowTagAnnotations(doc, view, log);
                         log.WriteLine($"Found {annotations.Count} annotations");
                         string jsonPath = Path.Combine(exportFolder, Path.GetFileNameWithoutExtension(fileName) + ".annotations.json");
 
@@ -316,7 +316,7 @@ namespace RevitViewExporter.Commands
             public XYZ Max { get; set; }
         }
 
-        private List<AnnotationBox> GetWindowTagAnnotations(Document doc, View view)
+        private List<AnnotationBox> GetWindowTagAnnotations(Document doc, View view, StreamWriter log)
         {
             var result = new List<AnnotationBox>();
 
@@ -329,6 +329,20 @@ namespace RevitViewExporter.Commands
             foreach (var el in collector)
             {
                 var tag = el as IndependentTag;
+                log.WriteLine($"tag: {tag}");
+                tag.get_BoundingBox(view);
+                log.WriteLine($"tag bounding box: {tag.get_BoundingBox(view)}");
+                ///////////////////
+                XYZ tagPosition2D = tag.TagHeadPosition;
+    
+                // tagPosition2D содержит X, Y координаты в единицах модели
+                // Z координата обычно равна 0 для 2D view
+                double x = tagPosition2D.X;
+                double y = tagPosition2D.Y;
+                log.WriteLine($"tag position 2D: ({x}, {y})");
+                //TaskDialog.Show("Revit",messageInfo);
+                ///////////////////
+
                 if (tag == null)
                 {
                     continue;

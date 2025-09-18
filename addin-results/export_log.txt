@@ -1,12 +1,95 @@
-﻿Export started at 9/17/2025 7:36:40 PM
+﻿Export started at 9/18/2025 9:26:19 AM
 Export folder: C:\Mac\Home\Documents\revit-2\addin-results
 Views to export: 1
 ----------------------------------------
+Exporting view: South
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (55.45236514290907, -28.225850844004878)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (61.070552690694015, -27.486202421424583)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (47.19032463146068, -29.03666867139737)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (66.68874023847897, -26.469653557736347)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (9.249999999999853, -29.807291666666597)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (20.583333333333186, -29.807291666666632)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (38.74999999999985, -29.807291666666693)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (47.19032463146068, -29.313569112505306)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (20.208333333333208, -30.821457701555055)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (14.874999999999874, -30.716647064122863)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (9.541666666666542, -30.71664706412285)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-0.04166666666676307, -30.799980397456157)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-5.875000000000095, -30.79998039745614)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-10.79166666666672, -30.79998039745612)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-16.625000000000053, -30.799980397456103)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-25.53125000000022, -28.549980397455982)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-25.44791666666689, -28.549980397455982)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (-31.94791666666689, -28.904791034888127)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (33.249999999999844, -29.807291666666675)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (27.583333333333186, -29.807291666666657)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (33.29166666666654, -30.716647064122924)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (27.958333333333208, -30.716647064122906)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (38.62499999999987, -30.71664706412294)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (44.79662712879216, -30.254306016399763)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (49.753851435661204, -29.60167505529949)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (56.033002224362, -28.775009171239144)
+tag: Autodesk.Revit.DB.IndependentTag
+tag bounding box: Autodesk.Revit.DB.BoundingBoxXYZ
+tag position 2D: (61.2380877465745, -28.08974666208386)
+Found 27 annotations
 View: South
   Image: C:\Mac\Home\Documents\revit-2\addin-results\South - Elevation - South.png (2000x886)
   JSON: C:\Mac\Home\Documents\revit-2\addin-results\South.annotations.json
   Found 27 annotations
   Types: WindowTag: 27
 ----------------------------------------
-Export completed at 9/17/2025 7:36:50 PM
+Export completed at 9/18/2025 9:26:36 AM
 Total views exported: 1

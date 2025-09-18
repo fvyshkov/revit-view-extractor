@@ -1,0 +1,4 @@
+Jrn.Directive "Version" , "26.0"
+Jrn.Data "File Name" , "Open" , "Z:\Documents\revit-2\100.rvt"
+Jrn.Wait 1
+Jrn.Data "File Operation" , "Close", "Z:\Documents\revit-2\100.rvt"
