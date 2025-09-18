@@ -179,7 +179,33 @@ def draw_annotations_on_image(json_path: str, output_path: Optional[str] = None,
                     bbox = (int(px_min["x"]), int(px_min["y"]), int(px_max["x"]), int(px_max["y"]))
                     coord_source = "pixelBBox"
         
-        # 2. Try bbox2D (normalized coordinates 0-1) - PRIORITY
+        # 2. Try pixelViewport (highest priority if present)
+        if not bbox and "pixelViewport" in ann:
+            pv = ann["pixelViewport"]
+            if "min" in pv and "max" in pv:
+                mn, mx = pv["min"], pv["max"]
+                if all(k in mn for k in ("x","y")) and all(k in mx for k in ("x","y")):
+                    x1 = int(mn["x"]); y1 = int(mn["y"])
+                    x2 = int(mx["x"]); y2 = int(mx["y"])
+                    bbox = (x1,y1,x2,y2)
+                    coord_source = "pixelViewport"
+
+        # 3. Try bboxViewport (normalized u,v in viewport basis)
+        if not bbox and "bboxViewport" in ann:
+            bvp = ann["bboxViewport"]
+            if "min" in bvp and "max" in bvp:
+                mn, mx = bvp["min"], bvp["max"]
+                if all(k in mn for k in ("u","v")) and all(k in mx for k in ("u","v")):
+                    u1 = float(mn["u"]); v1 = float(mn["v"]) 
+                    u2 = float(mx["u"]); v2 = float(mx["v"]) 
+                    x1 = int(max(0,min(1,u1))*img_w)
+                    x2 = int(max(0,min(1,u2))*img_w)
+                    y1 = int((1.0 - max(0,min(1,v2)))*img_h)
+                    y2 = int((1.0 - max(0,min(1,v1)))*img_h)
+                    bbox = (x1,y1,x2,y2)
+                    coord_source = "bboxViewport"
+
+        # 4. Try bbox2D (legacy) - PRIORITY after viewport
         if not bbox and "bbox2D" in ann:
             bbox2d = ann["bbox2D"]
             if "min" in bbox2d and "max" in bbox2d:

@@ -670,6 +670,56 @@ namespace RevitViewExporter.Commands
                         sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", Math.Max(px1, px2), Math.Max(py1, py2));
                         sb.Append("      }\n");
                     }
+
+                    // Also export viewport-based mapping using the same basis as viewportCorners (X,Z)
+                    if (cornerCoords != null && cornerCoords.Count > 0)
+                    {
+                        XYZ tl = cornerCoords.ContainsKey("TopLeft") ? cornerCoords["TopLeft"] : null;
+                        XYZ tr = cornerCoords.ContainsKey("TopRight") ? cornerCoords["TopRight"] : null;
+                        XYZ bl = cornerCoords.ContainsKey("BottomLeft") ? cornerCoords["BottomLeft"] : null;
+                        if (tl != null && tr != null && bl != null)
+                        {
+                            double tlx = tl.X; double trx = tr.X; double tlz = tl.Z; double blz = bl.Z;
+                            double tagXMin = a.Min.X; double tagZMin = a.Min.Y; // Y stores Z
+                            double tagXMax = a.Max.X; double tagZMax = a.Max.Y;
+
+                            double uVp1 = (tagXMin - tlx) / Math.Max(1e-9, (trx - tlx));
+                            double uVp2 = (tagXMax - tlx) / Math.Max(1e-9, (trx - tlx));
+                            double vVp1 = (tagZMin - blz) / Math.Max(1e-9, (tlz - blz));
+                            double vVp2 = (tagZMax - blz) / Math.Max(1e-9, (tlz - blz));
+
+                            double uVpMin = Math.Min(uVp1, uVp2); double uVpMax = Math.Max(uVp1, uVp2);
+                            double vVpMin = Math.Min(vVp1, vVp2); double vVpMax = Math.Max(vVp1, vVp2);
+
+                            // clamp to [0,1]
+                            uVpMin = Math.Max(0.0, Math.Min(1.0, uVpMin));
+                            uVpMax = Math.Max(0.0, Math.Min(1.0, uVpMax));
+                            vVpMin = Math.Max(0.0, Math.Min(1.0, vVpMin));
+                            vVpMax = Math.Max(0.0, Math.Min(1.0, vVpMax));
+
+                            // write bboxViewport
+                            sb.Append(",\n");
+                            sb.Append("      \"bboxViewport\": {\n");
+                            sb.AppendFormat("        \"min\": {{ \"u\": {0}, \"v\": {1} }},\n", uVpMin.ToString(System.Globalization.CultureInfo.InvariantCulture), vVpMin.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                            sb.AppendFormat("        \"max\": {{ \"u\": {0}, \"v\": {1} }}\n", uVpMax.ToString(System.Globalization.CultureInfo.InvariantCulture), vVpMax.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                            sb.Append("      }\n");
+
+                            // pixelViewport
+                            int pvx1 = Math.Max(0, Math.Min(imgW - 1, (int)Math.Round(uVpMin * imgW)));
+                            int pvx2 = Math.Max(0, Math.Min(imgW - 1, (int)Math.Round(uVpMax * imgW)));
+                            int pvy1 = Math.Max(0, Math.Min(imgH - 1, (int)Math.Round((1.0 - vVpMax) * imgH)));
+                            int pvy2 = Math.Max(0, Math.Min(imgH - 1, (int)Math.Round((1.0 - vVpMin) * imgH)));
+
+                            if (Math.Abs(pvx2 - pvx1) >= 1 && Math.Abs(pvy2 - pvy1) >= 1)
+                            {
+                                sb.Append(",\n");
+                                sb.Append("      \"pixelViewport\": {\n");
+                                sb.AppendFormat("        \"min\": {{ \"x\": {0}, \"y\": {1} }},\n", Math.Min(pvx1, pvx2), Math.Min(pvy1, pvy2));
+                                sb.AppendFormat("        \"max\": {{ \"x\": {0}, \"y\": {1} }}\n", Math.Max(pvx1, pvx2), Math.Max(pvy1, pvy2));
+                                sb.Append("      }\n");
+                            }
+                        }
+                    }
                 }
                 sb.Append("    }");
                 if (i < annotations.Count - 1) sb.Append(",");
