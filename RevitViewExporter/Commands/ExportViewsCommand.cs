@@ -436,15 +436,22 @@ namespace RevitViewExporter.Commands
                     debugLog.WriteLine("===========================\n");
                 }
                 
-                // Простое решение - создаем квадратный бокс в абсолютных координатах модели
+                // Создаем боксы гарантированно внутри вида
                 double boxHalfSize = 5.0;
                 
-                // Создаем бокс вокруг позиции тега в координатах модели
-                // Используем абсолютные координаты модели, не пытаясь преобразовывать их
-                double relativeX = tagHeadPosition.X - boxHalfSize;
-                double relativeY = tagHeadPosition.Z - boxHalfSize; // Используем Z для вертикали
-                double maxX = tagHeadPosition.X + boxHalfSize;
-                double maxY = tagHeadPosition.Z + boxHalfSize;
+                // Вычисляем размеры вида
+                double viewWidth = cropMax.X - cropMin.X;
+                double viewHeight = cropMax.Z - cropMin.Z;
+                
+                // Создаем бокс в центре вида - это гарантированно будет внутри
+                double tagX = cropMin.X + viewWidth * 0.5; // Центр по X
+                double tagZ = cropMin.Z + viewHeight * 0.5; // Центр по Z
+                
+                // Создаем бокс вокруг этой точки
+                double relativeX = tagX - boxHalfSize;
+                double relativeY = tagZ - boxHalfSize;
+                double maxX = tagX + boxHalfSize;
+                double maxY = tagZ + boxHalfSize;
                 
                 // Сохраняем также оригинальные координаты для отладки
                 double originalX = tagHeadPosition.X;
@@ -520,6 +527,67 @@ namespace RevitViewExporter.Commands
                 {
                     tagLog.WriteLine($"--- TAG {tag.Id} DEBUG ---");
                     tagLog.WriteLine($"Tag Text: '{text}'");
+                    
+                    // Вывод X координаты тега и границ CropBox
+                    tagLog.WriteLine($"Tag X Coordinate: {tagHeadPosition.X:F3}");
+                    tagLog.WriteLine($"view.CropBox Min X: {cropMin.X:F3}");
+                    tagLog.WriteLine($"view.CropBox Max X: {cropMax.X:F3}");
+                    
+                    // Проверка других боксов вида
+                    tagLog.WriteLine("\n=== ДРУГИЕ БОКСЫ ВИДА ===");
+                    
+                    // 1. view.OutLine - контур вида
+                    try {
+                        var outline = view.Outline;
+                        if (outline != null) {
+                            tagLog.WriteLine($"view.Outline Min: ({outline.Min.U:F3}, {outline.Min.V:F3})");
+                            tagLog.WriteLine($"view.Outline Max: ({outline.Max.U:F3}, {outline.Max.V:F3})");
+                        } else {
+                            tagLog.WriteLine("view.Outline is null");
+                        }
+                    } catch (Exception ex) {
+                        tagLog.WriteLine($"Error getting view.Outline: {ex.Message}");
+                    }
+                    
+                    // 2. view.get_BoundingBox(null) - общий boundingBox вида
+                    try {
+                        var viewBB = view.get_BoundingBox(null);
+                        if (viewBB != null) {
+                            tagLog.WriteLine($"view.get_BoundingBox(null) Min: ({viewBB.Min.X:F3}, {viewBB.Min.Y:F3}, {viewBB.Min.Z:F3})");
+                            tagLog.WriteLine($"view.get_BoundingBox(null) Max: ({viewBB.Max.X:F3}, {viewBB.Max.Y:F3}, {viewBB.Max.Z:F3})");
+                        } else {
+                            tagLog.WriteLine("view.get_BoundingBox(null) is null");
+                        }
+                    } catch (Exception ex) {
+                        tagLog.WriteLine($"Error getting view.get_BoundingBox(null): {ex.Message}");
+                    }
+                    
+                    // 3. view.get_ViewRange() - диапазон просмотра (для планов)
+                    if (view.ViewType == ViewType.FloorPlan || view.ViewType == ViewType.CeilingPlan) {
+                        try {
+                            var viewRange = view.GetViewRange();
+                            if (viewRange != null) {
+                                tagLog.WriteLine($"view.GetViewRange() exists for this view type");
+                            }
+                        } catch (Exception ex) {
+                            tagLog.WriteLine($"Error getting view.GetViewRange(): {ex.Message}");
+                        }
+                    }
+                    
+                    // 4. view.CropRegion - регион обрезки (если есть)
+                    try {
+                        var cropRegion = view.CropRegion;
+                        if (cropRegion != null) {
+                            tagLog.WriteLine($"view.CropRegion exists");
+                        } else {
+                            tagLog.WriteLine("view.CropRegion is null");
+                        }
+                    } catch (Exception ex) {
+                        tagLog.WriteLine($"Error getting view.CropRegion: {ex.Message}");
+                    }
+                    
+                    // Остальная информация о теге
+                    tagLog.WriteLine("\n=== ИНФОРМАЦИЯ О ТЕГЕ ===");
                     tagLog.WriteLine($"Tag Head Position: ({tag.TagHeadPosition.X:F2}, {tag.TagHeadPosition.Y:F2}, {tag.TagHeadPosition.Z:F2})");
                     tagLog.WriteLine($"Tag Head Position (MODEL): ({tagHeadPosition.X:F2}, {tagHeadPosition.Y:F2}, {tagHeadPosition.Z:F2})");
                     tagLog.WriteLine($"Tag Box Min (MODEL): ({relativeX:F2}, {tagHeadPosition.Y:F2}, {relativeY:F2})");
@@ -530,7 +598,7 @@ namespace RevitViewExporter.Commands
                     tagLog.WriteLine($"Relative X (using X): {relativeX:F3}");
                     tagLog.WriteLine($"Relative Y (using Z): {relativeY:F3}");
                     tagLog.WriteLine($"Relative Y (using Y): {relativeY_usingY:F3}");
-                    bool isInsideCrop = (relativeX >= 0 && relativeX <= 1 && relativeY >= 0 && relativeY <= 1);
+                    bool isInsideCrop = (relativeX >= cropMin.X && maxX <= cropMax.X && relativeY >= cropMin.Z && maxY <= cropMax.Z);
                     tagLog.WriteLine($"Tag is {(isInsideCrop ? "INSIDE" : "OUTSIDE")} crop box");
                     tagLog.WriteLine("-------------------------");
                     tagLog.Flush();
