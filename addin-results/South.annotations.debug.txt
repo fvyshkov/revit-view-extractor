@@ -1,0 +1,10 @@
+﻿=== JSON DEBUG for South ===
+Image size: 2000x949
+Annotations count: 0
+CropBox: Min(-133.113, -21.581, -161.834) Max(124.889, 100.000, -0.000)
+Viewport corners found: 9
+TopLeft: (-133.113, -0.000)
+TopRight: (124.889, -0.000)
+BottomLeft: (-133.113, -161.834)
+
+=== END DEBUG ===

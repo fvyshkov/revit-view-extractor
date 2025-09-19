@@ -335,11 +335,16 @@ namespace RevitViewExporter.Commands
                 log.WriteLine($"tag: {tag}");
                 tag.get_BoundingBox(view);
                 log.WriteLine($"tag bounding box: {tag.get_BoundingBox(view)}");
+                //log.WriteLine($"tag tag.BoundingBoxXYZ: {tag.BoundingBoxXYZ}");
+                //log.WriteLine($"tag tag.BoundingBox: {tag.BoundingBox}");
+                //log.WriteLine($"tag tag.Box: {tag.Box}");
+                
                 ///////////////////
                 XYZ tagPosition2D = tag.TagHeadPosition;
                 double x = tagPosition2D.X;
                 double y = tagPosition2D.Y;
-                log.WriteLine($"tag position 2D: ({x}, {y})");
+                double z = tagPosition2D.Z;
+                log.WriteLine($"tag position 2D: ({x}, {y}, {z})");
                 //TaskDialog.Show("Revit",messageInfo);
                 ///////////////////
 
